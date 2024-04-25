@@ -1,0 +1,15 @@
+{
+  user(id: "{{ .user_id }}") {
+    name
+  }
+}
+
+RETURNS
+
+{
+  "data": {
+    "user": {
+      "name": "John Doe"
+    }
+  }
+}

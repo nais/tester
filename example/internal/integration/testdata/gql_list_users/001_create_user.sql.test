@@ -1,0 +1,11 @@
+-- type: row
+INSERT INTO users (name, email) VALUES ('John Doe', 'john.doe@example.com') RETURNING id;
+
+RETURNS
+
+OPTION id=IGNORE
+ENDOPTS
+
+{}
+
+STORE user_id=id

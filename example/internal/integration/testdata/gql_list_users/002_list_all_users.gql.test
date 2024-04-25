@@ -1,0 +1,25 @@
+{
+  users {
+    id
+    name
+    email
+  }
+}
+
+RETURNS
+
+OPTION data.users.*.id=IGNORE
+
+ENDOPTS
+
+  {
+    "data": {
+      "users": [
+        {
+          "id": "something",
+          "name": "John Doe",
+          "email": "john.doe@example.com"
+        }
+      ]
+    }
+  }

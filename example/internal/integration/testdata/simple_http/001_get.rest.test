@@ -1,0 +1,11 @@
+GET /
+
+RETURNS
+
+OPTION responseCode = 200
+
+ENDOPTS
+
+{
+  "message": "hello world"
+}
