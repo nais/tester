@@ -22,21 +22,6 @@ defining your test cases as described below.
 ### Templating
 
 The entire test file is run through a templating engine before being run.
-This means that you can use the following variables in your test files:
-
-| Variable                          | Description                                                     |
-| --------------------------------- | --------------------------------------------------------------- |
-| `{{ .Tenant }}`                   | A map of tenants defined in the config file.                    |
-| `{{ .Tenant.<name> }}`            | A specific tenant defined in the config file.                   |
-| `{{ .Tenant.<name>.Env }}`        | A map of environments defined on the tenant in the config file. |
-| `{{ .Tenant.<name>.Env.<name> }}` | A specific environment.                                         |
-
-Both `.Tenant.<name>` and `.Tenant<name>.Env.<name>` contains information about that object, e.g.:
-
-| Variable | Description            |
-| -------- | ---------------------- |
-| `.ID`    | The ID of the object   |
-| `.Name`  | The name of the object |
 
 If you store fields from the response of a test, using `STORE <key>=<response key>`, you can access them using `{{ .<key> }}`.
 
