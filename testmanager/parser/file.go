@@ -85,7 +85,10 @@ func (f *File) AppendStore(val map[string]any, state map[string]any) {
 					continue
 				}
 			}
-			root = root[pathParts[i]].(map[string]interface{})
+			mp, ok := root[pathParts[i]].(map[string]interface{})
+			if ok {
+				root = mp
+			}
 		}
 		state[key] = val
 	}
