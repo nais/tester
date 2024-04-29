@@ -40,6 +40,7 @@ func (m *testCase) Register(runner Runner) error {
 
 func runTestCase[T any](ctx context.Context, m *Manager[T], rfn CreateRunnerFunc[T], dir fs.FS, name string) {
 	m.t.Run(name, func(t *testing.T) {
+		ctx := withTestDir(ctx, name)
 		config := new(T)
 		f, _ := fs.ReadFile(dir, filepath.Join(name, "00_config.yaml"))
 		if f != nil {
@@ -96,7 +97,7 @@ func (t *testCase) runTestFile(ctx context.Context, name string) {
 		return
 	}
 
-	t.t.Run(name, func(tt *testing.T) {
+	t.t.Run(filepath.Base(name), func(tt *testing.T) {
 		if t.hasError {
 			tt.Skip("previous test failed")
 		}
