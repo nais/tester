@@ -1,12 +1,12 @@
 package parser
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v3"
 )
 
 type File struct {
@@ -46,7 +46,7 @@ func (f *File) Execute(state map[string]any, ex func() (any, error)) error {
 	} else {
 		expected = map[string]any{}
 	}
-	if err := json.Unmarshal([]byte(f.Returns), &expected); err != nil {
+	if err := yaml.Unmarshal([]byte(f.Returns), &expected); err != nil {
 		return fmt.Errorf("unable to unmarshal expected returns: %w\n%v", err, f.Returns)
 	}
 

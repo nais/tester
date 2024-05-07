@@ -2,12 +2,12 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nais/tester/testmanager/parser"
+	"gopkg.in/yaml.v3"
 )
 
 type PubSubTopic struct {
@@ -59,7 +59,7 @@ func (p *PubSub) Run(ctx context.Context, logf func(format string, args ...any),
 
 	if len(f.Query) > 0 {
 		psm := PubSubMessage{}
-		if err := json.Unmarshal([]byte(f.Query), &psm); err != nil {
+		if err := yaml.Unmarshal([]byte(f.Query), &psm); err != nil {
 			return err
 		}
 
@@ -78,8 +78,8 @@ func (p *PubSub) Run(ctx context.Context, logf func(format string, args ...any),
 	}
 
 	expected := map[string]any{}
-	if err := json.Unmarshal([]byte(f.Returns), &expected); err != nil {
-		return fmt.Errorf("json.Unmarshal: %w", err)
+	if err := yaml.Unmarshal([]byte(f.Returns), &expected); err != nil {
+		return fmt.Errorf("yaml.Unmarshal: %w", err)
 	}
 
 	var errs []error

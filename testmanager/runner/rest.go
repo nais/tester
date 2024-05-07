@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/nais/tester/testmanager/parser"
+	"gopkg.in/yaml.v3"
 )
 
 type REST struct {
@@ -62,7 +62,7 @@ func (r *REST) Run(ctx context.Context, logf func(format string, args ...any), b
 		}
 
 		res := map[string]any{}
-		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		if err := yaml.Unmarshal(rec.Body.Bytes(), &res); err != nil {
 			return nil, fmt.Errorf("rest.Run: unable to unmarshal response: %w", err)
 		}
 

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/nais/tester/testmanager/parser"
+	"gopkg.in/yaml.v3"
 )
 
 type GQL struct {
@@ -57,7 +58,7 @@ func (g *GQL) Run(ctx context.Context, logf func(format string, args ...any), bo
 		g.server.ServeHTTP(rec, req)
 
 		res := map[string]any{}
-		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		if err := yaml.Unmarshal(rec.Body.Bytes(), &res); err != nil {
 			return nil, fmt.Errorf("gql.Run: unable to unmarshal response: %w", err)
 		}
 
