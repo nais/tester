@@ -10,7 +10,7 @@ require (
 	github.com/sqlc-dev/sqlc v1.26.0
 	github.com/testcontainers/testcontainers-go v0.30.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.30.0
-	github.com/vektah/gqlparser/v2 v2.5.11
+	github.com/vektah/gqlparser/v2 v2.5.14
 )
 
 require (
