@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"context"
@@ -9,45 +9,52 @@ import (
 	"os"
 	"testing"
 
+	// allow test containers to trigger postgres snapshots
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/tester/example/internal/database"
 	"github.com/nais/tester/example/internal/graph"
-	"github.com/nais/tester/testmanager"
-	"github.com/nais/tester/testmanager/runner"
+	testmanager "github.com/nais/tester/lua"
+	"github.com/nais/tester/lua/runner"
+	"github.com/nais/tester/lua/spec"
 	"github.com/sirupsen/logrus"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestRunner(t *testing.T) {
+func TestRunner() (*testmanager.Manager, error) {
 	ctx := context.Background()
-	mgr := testmanager.New(t, newManager(ctx, t))
-
-	if err := mgr.Run(ctx, os.DirFS("./testdata")); err != nil {
-		t.Fatal(err)
+	mgr, err := testmanager.New(newConfig, newManager(ctx), &runner.GQL{}, &runner.SQL{}, &runner.REST{})
+	if err != nil {
+		return nil, err
 	}
+
+	// if err := mgr.Run(ctx, os.DirFS("./testdata")); err != nil {
+	// 	return nil, err
+	// }
+
+	return mgr, nil
 }
 
-func newManager(ctx context.Context, t *testing.T) testmanager.CreateRunnerFunc[*Config] {
-	container, connStr, err := startPostgresql(ctx, t)
+func newManager(ctx context.Context) testmanager.SetupFunc {
+	container, connStr, err := startPostgresql(ctx)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
-	return func(ctx context.Context, config *Config, state map[string]any) ([]testmanager.Runner, func(), []testmanager.Option, error) {
+	return func(ctx context.Context) ([]spec.Runner, func(), error) {
 		ctx, done := context.WithCancel(ctx)
 		cleanups := []func(){}
-
-		opts := []testmanager.Option{}
 
 		db, pool, cleanup, err := newDB(ctx, container, connStr)
 		if err != nil {
 			done()
-			return nil, nil, opts, err
+			return nil, nil, err
 		}
 		cleanups = append(cleanups, cleanup)
 
@@ -59,9 +66,9 @@ func newManager(ctx context.Context, t *testing.T) testmanager.CreateRunnerFunc[
 			log.Level = logrus.DebugLevel
 		}
 
-		runners := []testmanager.Runner{
-			newRestRunner(ctx, t),
-			newGQLRunner(ctx, t, db),
+		runners := []spec.Runner{
+			newRestRunner(),
+			newGQLRunner(ctx, db),
 			runner.NewSQLRunner(pool),
 		}
 
@@ -70,11 +77,11 @@ func newManager(ctx context.Context, t *testing.T) testmanager.CreateRunnerFunc[
 				cleanup()
 			}
 			done()
-		}, opts, nil
+		}, nil
 	}
 }
 
-func newRestRunner(ctx context.Context, t *testing.T) testmanager.Runner {
+func newRestRunner() spec.Runner {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +92,7 @@ func newRestRunner(ctx context.Context, t *testing.T) testmanager.Runner {
 	return runner.NewRestRunner(router)
 }
 
-func newGQLRunner(_ context.Context, _ *testing.T, db *database.Queries) testmanager.Runner {
+func newGQLRunner(_ context.Context, db *database.Queries) spec.Runner {
 	log := logrus.New()
 	log.Out = io.Discard
 
@@ -105,13 +112,13 @@ func newGQLRunner(_ context.Context, _ *testing.T, db *database.Queries) testman
 	return runner.NewGQLRunner(srv)
 }
 
-func startPostgresql(ctx context.Context, t *testing.T) (*postgres.PostgresContainer, string, error) {
-	container, err := postgres.RunContainer(ctx,
-		testcontainers.WithLogger(testcontainers.TestLogger(t)),
-		testcontainers.WithImage("docker.io/postgres:16-alpine"),
+func startPostgresql(ctx context.Context) (*postgres.PostgresContainer, string, error) {
+	container, err := postgres.Run(ctx, "docker.io/postgres:16-alpine",
+		// testcontainers.WithLogger(testcontainers.TestLogger(t)),
 		postgres.WithDatabase("example"),
 		postgres.WithUsername("example"),
 		postgres.WithPassword("example"),
+		postgres.WithSQLDriver("pgx"),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2)),
@@ -120,11 +127,11 @@ func startPostgresql(ctx context.Context, t *testing.T) (*postgres.PostgresConta
 		return nil, "", fmt.Errorf("failed to start container: %w", err)
 	}
 
-	t.Cleanup(func() {
-		if err := container.Terminate(ctx); err != nil {
-			log.Fatalf("failed to terminate container: %s", err)
-		}
-	})
+	// t.Cleanup(func() {
+	// 	if err := container.Terminate(ctx); err != nil {
+	// 		log.Fatalf("failed to terminate container: %s", err)
+	// 	}
+	// })
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
@@ -140,7 +147,9 @@ func startPostgresql(ctx context.Context, t *testing.T) (*postgres.PostgresConta
 		return nil, "", fmt.Errorf("failed to migrate: %w", err)
 	}
 
-	if err := container.Snapshot(ctx); err != nil {
+	pool.Reset()
+
+	if err := container.Snapshot(ctx, postgres.WithSnapshotName("migrated")); err != nil {
 		return nil, "", fmt.Errorf("failed to snapshot: %w", err)
 	}
 
