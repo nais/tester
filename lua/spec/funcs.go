@@ -4,6 +4,8 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+type Null struct{}
+
 type SaveData struct {
 	Name       string
 	IgnoreNull bool

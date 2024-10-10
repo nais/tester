@@ -77,6 +77,8 @@ func (r *PubSub) check(L *lua.LState) int {
 	for _, msg := range msgs {
 		if err := StdCheckError(L.Context(), tbl, msg.Msg); err != nil {
 			errs = append(errs, err.Error())
+		} else {
+			return 0
 		}
 	}
 

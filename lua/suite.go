@@ -38,10 +38,20 @@ func (s *suite) run(ctx context.Context, filename string) {
 	L := lua.NewState()
 	defer L.Close()
 
+	defer func() {
+		if s.cleanup != nil {
+			s.cleanup()
+		}
+	}()
+
 	L.SetContext(ctx)
 
 	L.Register("Save", spec.Save)
 	L.Register("Ignore", spec.Ignore)
+
+	nullD := L.NewUserData()
+	nullD.Value = spec.Null{}
+	L.SetGlobal("Null", nullD)
 
 	ud := L.NewTable()
 	L.SetGlobal("Config", ud)

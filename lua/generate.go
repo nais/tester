@@ -38,6 +38,10 @@ end
 ---@type table<string, any>
 State = {}
 
+--- Null ensures the value is null
+---@type userdata
+Null = {}
+
 `
 
 func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any) {

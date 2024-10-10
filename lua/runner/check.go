@@ -162,6 +162,8 @@ func convertToCheck(path string, v lua.LValue, toSave map[string]string, opts cm
 				return "[[[ ignore_allow_null ]]]", append(opts, allowNull(path))
 			}
 			return "[[[ ignore ]]]", append(opts, notNull(path))
+		case spec.Null:
+			return nil, opts
 		default:
 			panic("unknown userdata type " + fmt.Sprintf("%T", v))
 		}
