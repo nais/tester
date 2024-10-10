@@ -27,7 +27,7 @@ local TestFunctionTgql = {}
 
 --- Query comment
 ---@param query string
----@param headers table
+---@param headers? table
 function TestFunctionTgql.query(query, headers)
   print("query")
 end

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/nais/tester/lua/runner"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
@@ -14,16 +15,22 @@ type suite struct {
 	// be done when the first test is run or first helper is invoked.
 	setupDone bool
 	runners   []spec.Runner
-	cfg       any
+	mgr       *Manager
 	state     *lua.LTable
 	reporter  Reporter
+	cfg       any
+	cleanup   func()
 }
 
-func newSuite(cfg any, runners []spec.Runner, reporter Reporter) *suite {
+func newSuite(mgr *Manager, reporter Reporter) *suite {
+	var cfg any
+	if mgr.newConfigFn != nil {
+		cfg = mgr.newConfigFn()
+	}
 	return &suite{
-		cfg:      cfg,
-		runners:  runners,
+		mgr:      mgr,
 		reporter: reporter,
+		cfg:      cfg,
 	}
 }
 
@@ -36,8 +43,7 @@ func (s *suite) run(ctx context.Context, filename string) {
 	L.Register("Save", spec.Save)
 	L.Register("Ignore", spec.Ignore)
 
-	ud := L.NewUserData()
-	ud.Value = s.cfg
+	ud := L.NewTable()
 	L.SetGlobal("Config", ud)
 
 	s.state = L.NewTable()
@@ -45,20 +51,45 @@ func (s *suite) run(ctx context.Context, filename string) {
 
 	tests := map[string]lua.LGFunction{}
 
-	for _, r := range s.runners {
-		tests[r.Name()] = s.newTest(r, L)
+	for _, r := range s.mgr.runners {
+		tests[r.Name()] = s.newTest(r.Name(), L)
 	}
 
 	mod := L.SetFuncs(L.NewTable(), tests)
 	L.SetGlobal("Test", mod)
 
 	helperFuncs := map[string]lua.LGFunction{}
-	for _, r := range s.runners {
+	for _, r := range s.mgr.runners {
 		if h, ok := r.(spec.HasHelperFunctions); ok {
 			for _, f := range h.HelperFunctions() {
 				helperFuncs[f.Name] = func(l *lua.LState) int {
-					s.setup()
-					return f.Func(l)
+					s.setup(L)
+
+					var actualRunner spec.Runner
+					for _, i := range s.runners {
+						if i.Name() == r.Name() {
+							actualRunner = i
+							break
+						}
+					}
+
+					if actualRunner == nil {
+						L.RaiseError("runner %q not found", r.Name())
+					}
+
+					var fn lua.LGFunction
+					for _, inf := range actualRunner.(spec.HasHelperFunctions).HelperFunctions() {
+						if inf.Name == f.Name {
+							fn = inf.Func
+							break
+						}
+					}
+
+					if fn == nil {
+						L.RaiseError("helper function %q not found", f.Name)
+					}
+
+					return fn(L)
 				}
 			}
 		}
@@ -72,19 +103,31 @@ func (s *suite) run(ctx context.Context, filename string) {
 	}
 }
 
-func (s *suite) newTest(tech spec.Runner, _ *lua.LState) lua.LGFunction {
+func (s *suite) newTest(runnerName string, _ *lua.LState) lua.LGFunction {
 	return func(L *lua.LState) int {
 		name := L.CheckString(1)
 		fn := L.CheckFunction(2)
 
-		s.reporter.RunTest(L.Context(), tech.Name(), name, func(r Reporter) {
+		s.setup(L)
+
+		var actualRunner spec.Runner
+		for _, r := range s.runners {
+			if r.Name() == runnerName {
+				actualRunner = r
+				break
+			}
+		}
+
+		if actualRunner == nil {
+			L.RaiseError("runner %q not found", runnerName)
+		}
+
+		s.reporter.RunTest(L.Context(), actualRunner.Name(), name, func(r Reporter) {
 			ctx := runner.WithSaveFunc(L.Context(), s.save)
 			L.SetContext(ctx)
 
-			s.setup()
-
 			mp := map[string]lua.LGFunction{}
-			for _, f := range tech.Functions() {
+			for _, f := range actualRunner.Functions() {
 				mp[f.Name] = func(l *lua.LState) int {
 					return f.Func(l)
 				}
@@ -104,10 +147,23 @@ func (s *suite) newTest(tech spec.Runner, _ *lua.LState) lua.LGFunction {
 	}
 }
 
-func (s *suite) setup() {
+func (s *suite) setup(L *lua.LState) {
 	if s.setupDone {
 		return
 	}
+
+	t := ConvertToGoType(L.GetGlobal("Config"))
+
+	if err := mapstructure.Decode(t, s.cfg); err != nil {
+		L.RaiseError("error decoding config: %v", err)
+	}
+
+	var err error
+	s.runners, s.cleanup, err = s.mgr.doSetup(L.Context(), s.cfg)
+	if err != nil {
+		L.RaiseError("error during setup: %v", err)
+	}
+
 	s.setupDone = true
 }
 

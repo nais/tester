@@ -10,12 +10,13 @@ import (
 	"github.com/nais/tester/lua/spec"
 )
 
-type SetupFunc func(ctx context.Context) (runners []spec.Runner, close func(), err error)
+type SetupFunc func(ctx context.Context, dir string, config any) (runners []spec.Runner, close func(), err error)
 
 type Manager struct {
 	runners     []spec.Runner
 	newConfigFn func() any
 	setup       SetupFunc
+	dir         string
 }
 
 func New(newConfigFn func() any, setup SetupFunc, runners ...spec.Runner) (*Manager, error) {
@@ -51,11 +52,7 @@ type Reporter interface {
 }
 
 func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error {
-	runners, close, err := m.setup(ctx)
-	if err != nil {
-		return fmt.Errorf("setting up test environment: %w", err)
-	}
-	defer close()
+	m.dir = dir
 
 	entries, err := filepath.Glob(filepath.Join(dir, "*.lua"))
 	if err != nil {
@@ -68,7 +65,7 @@ func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error 
 		}
 
 		reporter.RunFile(ctx, f, func(r Reporter) {
-			s := newSuite(m, runners, r)
+			s := newSuite(m, r)
 			s.run(ctx, f)
 		})
 	}
@@ -86,4 +83,8 @@ func (m *Manager) GenerateSpec(dir string) error {
 
 	GenerateSpec(f, m.runners, m.newConfigFn())
 	return nil
+}
+
+func (m *Manager) doSetup(ctx context.Context, config any) (runners []spec.Runner, close func(), err error) {
+	return m.setup(ctx, m.dir, config)
 }

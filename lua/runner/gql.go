@@ -38,7 +38,7 @@ func (g *GQL) Functions() []*spec.Function {
 					Doc:  "The query to run",
 				},
 				{
-					Name: "headers",
+					Name: "headers?",
 					Type: []spec.ArgumentType{spec.ArgumentTypeTable},
 					Doc:  "The headers to add to the HTTP request",
 				},

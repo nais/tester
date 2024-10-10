@@ -47,7 +47,7 @@ func newManager(ctx context.Context) testmanager.SetupFunc {
 		panic(err)
 	}
 
-	return func(ctx context.Context) ([]spec.Runner, func(), error) {
+	return func(ctx context.Context, _ string, _ any) ([]spec.Runner, func(), error) {
 		ctx, done := context.WithCancel(ctx)
 		cleanups := []func(){}
 

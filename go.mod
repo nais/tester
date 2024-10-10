@@ -5,6 +5,7 @@ go 1.22
 require (
 	github.com/google/go-cmp v0.6.0
 	github.com/jackc/pgx/v5 v5.7.1
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/yuin/gopher-lua v1.1.1
 )
 

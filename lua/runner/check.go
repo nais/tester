@@ -30,20 +30,26 @@ func WithSaveFunc(ctx context.Context, fn SaveFunc) context.Context {
 }
 
 func StdCheck(L *lua.LState, tbl *lua.LTable, b any) {
+	if err := StdCheckError(L.Context(), tbl, b); err != nil {
+		L.RaiseError(err.Error())
+	}
+}
+
+func StdCheckError(ctx context.Context, tbl *lua.LTable, b any) error {
 	toSave := make(map[string]string)
 	a, opts := convertToCheck("", tbl, toSave, nil)
 
 	diff := cmp.Diff(a, b, opts...)
 	if diff != "" {
-		L.RaiseError("diff -want +got:\n%v", diff)
-		return
+		return fmt.Errorf("diff -want +got:\n%v", diff)
 	}
 
-	saveFunc := L.Context().Value(ctxSaveFunc).(SaveFunc)
+	saveFunc := ctx.Value(ctxSaveFunc).(SaveFunc)
 
 	for path, name := range toSave {
 		appendStore(name, path, b, saveFunc)
 	}
+	return nil
 }
 
 func appendStore(key, path string, body any, fn SaveFunc) {
