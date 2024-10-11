@@ -18,7 +18,10 @@ type (
 
 const (
 	ctxSaveFunc contextKey = iota
-	ctxReporter
+)
+
+const (
+	emptyListOrMapString = "[[[ empty_list_or_map ]]]"
 )
 
 type Reporter interface {
@@ -131,6 +134,12 @@ func convertToCheck(path string, v lua.LValue, toSave map[string]string, opts cm
 				m[key] = val
 			})
 
+			if len(m) == 0 {
+				// As Lua tables can be both lists and maps, we cannot distinguish between an empty list and an empty map
+				// So we treat an empty table as an OR between an empty list and an empty map
+				return emptyListOrMapString, append(opts, emptyContainer(path))
+			}
+
 			return m, opts
 		} else {
 			// Treat as list
@@ -202,4 +211,27 @@ func ignorePath(path string) func(p cmp.Path) bool {
 		}
 		return s == path
 	}
+}
+
+func emptyContainer(path string) cmp.Option {
+	return cmp.FilterPath(ignorePath(path), cmp.Comparer(cmpEmptyContainer))
+}
+
+func cmpEmptyContainer(a, b any) bool {
+	var toCheck any
+	if s, ok := a.(string); ok && s == emptyListOrMapString {
+		toCheck = b
+	} else if s, ok := b.(string); ok && s == emptyListOrMapString {
+		toCheck = a
+	} else {
+		return false
+	}
+
+	switch v := toCheck.(type) {
+	case []any:
+		return len(v) == 0
+	case map[string]any:
+		return len(v) == 0
+	}
+	return false
 }
