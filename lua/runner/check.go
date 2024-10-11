@@ -153,15 +153,14 @@ func convertToCheck(path string, v lua.LValue, toSave map[string]string, opts cm
 		switch v := ud.Value.(type) {
 		case spec.SaveData:
 			toSave[path] = v.Name
-			if v.IgnoreNull {
+			if v.AllowNull {
 				return "[[[ save_allow_null ]]]", append(opts, allowNull(path))
 			}
 			return "[[[ save ]]]", append(opts, notNull(path))
 		case spec.IgnoreData:
-			if v.IgnoreNull {
-				return "[[[ ignore_allow_null ]]]", append(opts, allowNull(path))
-			}
-			return "[[[ ignore ]]]", append(opts, notNull(path))
+			return "[[[ ignore ]]]", append(opts, allowNull(path))
+		case spec.NotNullData:
+			return "[[[ not_null ]]]", append(opts, notNull(path))
 		case spec.Null:
 			return nil, opts
 		default:

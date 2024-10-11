@@ -7,18 +7,18 @@ import (
 type Null struct{}
 
 type SaveData struct {
-	Name       string
-	IgnoreNull bool
+	Name      string
+	AllowNull bool
 }
 
 func Save(L *lua.LState) int {
 	name := L.CheckString(1)
-	ignoreNull := L.OptBool(2, false)
+	failOnNull := L.OptBool(2, false)
 
 	ud := L.NewUserData()
 	ud.Value = SaveData{
-		Name:       name,
-		IgnoreNull: ignoreNull,
+		Name:      name,
+		AllowNull: failOnNull,
 	}
 
 	L.Push(ud)
@@ -26,17 +26,22 @@ func Save(L *lua.LState) int {
 	return 1
 }
 
-type IgnoreData struct {
-	IgnoreNull bool
-}
+type IgnoreData struct{}
 
 func Ignore(L *lua.LState) int {
-	ignoreNull := L.OptBool(1, false)
-
 	ud := L.NewUserData()
-	ud.Value = IgnoreData{
-		IgnoreNull: ignoreNull,
-	}
+	ud.Value = IgnoreData{}
+
+	L.Push(ud)
+
+	return 1
+}
+
+type NotNullData struct{}
+
+func NotNull(L *lua.LState) int {
+	ud := L.NewUserData()
+	ud.Value = NotNullData{}
 
 	L.Push(ud)
 

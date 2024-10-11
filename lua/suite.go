@@ -48,6 +48,7 @@ func (s *suite) run(ctx context.Context, filename string) {
 
 	L.Register("Save", spec.Save)
 	L.Register("Ignore", spec.Ignore)
+	L.Register("NotNull", spec.NotNull)
 
 	nullD := L.NewUserData()
 	nullD.Value = spec.Null{}

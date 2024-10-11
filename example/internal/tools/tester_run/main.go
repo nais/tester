@@ -15,7 +15,7 @@ func main() {
 	flag.StringVar(&dir, "d", dir, "write spec to this directory")
 	flag.Parse()
 
-	mgr, err := integration.TestRunner()
+	mgr, err := integration.TestRunner(false)
 	if err != nil {
 		panic(err)
 	}

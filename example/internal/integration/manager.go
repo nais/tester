@@ -27,9 +27,16 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestRunner() (*testmanager.Manager, error) {
+func TestRunner(skipPostgres bool) (*testmanager.Manager, error) {
 	ctx := context.Background()
-	mgr, err := testmanager.New(newConfig, newManager(ctx), &runner.GQL{}, &runner.SQL{}, &runner.REST{})
+
+	var setup testmanager.SetupFunc = func(ctx context.Context, dir string, config any) (runners []spec.Runner, close func(), err error) {
+		return nil, nil, fmt.Errorf("no setup function provided")
+	}
+	if !skipPostgres {
+		setup = newManager(ctx)
+	}
+	mgr, err := testmanager.New(newConfig, setup, &runner.GQL{}, &runner.SQL{}, &runner.REST{})
 	if err != nil {
 		return nil, err
 	}

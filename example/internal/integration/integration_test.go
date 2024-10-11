@@ -8,7 +8,7 @@ import (
 )
 
 func TestIntegration(t *testing.T) {
-	mgr, err := TestRunner()
+	mgr, err := TestRunner(false)
 	if err != nil {
 		t.Fatal(err)
 	}
