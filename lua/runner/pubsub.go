@@ -51,11 +51,28 @@ func (g *PubSub) Functions() []*spec.Function {
 				{
 					Name: "resp",
 					Type: []spec.ArgumentType{spec.ArgumentTypeTable},
-					Doc:  "The message to check for",
+					Doc:  "The message to check for. Must match both data and attributes",
 				},
 			},
 			Doc:  "Check comment",
 			Func: g.check,
+		},
+	}
+}
+
+func (g *PubSub) HelperFunctions() []*spec.Function {
+	return []*spec.Function{
+		{
+			Name: "emptyPubSubTopic",
+			Args: []spec.Argument{
+				{
+					Name: "topic",
+					Type: []spec.ArgumentType{spec.ArgumentTypeString},
+					Doc:  "The topic to check",
+				},
+			},
+			Doc:  "Check comment",
+			Func: g.emptyTopic,
 		},
 	}
 }
@@ -75,7 +92,11 @@ func (r *PubSub) check(L *lua.LState) int {
 
 	var errs []string
 	for _, msg := range msgs {
-		if err := StdCheckError(L.Context(), tbl, msg.Msg); err != nil {
+		b := map[string]any{
+			"data":       msg.Msg,
+			"attributes": msg.Attributes,
+		}
+		if err := StdCheckError(L.Context(), tbl, b); err != nil {
 			errs = append(errs, err.Error())
 		} else {
 			return 0
@@ -90,67 +111,15 @@ func (r *PubSub) check(L *lua.LState) int {
 	return 0
 }
 
-// func (p *PubSub) Run(ctx context.Context, logf func(format string, args ...any), body []byte, state map[string]any) error {
-// 	f, err := parser.Parse(body, state)
-// 	if err != nil {
-// 		return fmt.Errorf("gql.Parse: %w", err)
-// 	}
+func (r *PubSub) emptyTopic(L *lua.LState) int {
+	topic := L.CheckString(1)
 
-// 	topic, ok := f.Opts["topic"]
-// 	if !ok {
-// 		return fmt.Errorf("missing 'topic' option")
-// 	}
-// 	if !p.hasTopic(topic) {
-// 		return fmt.Errorf("topic %q not registered, has: %v", topic, p.topicsNames())
-// 	}
-// 	delete(f.Opts, "topic")
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
-// 	if len(f.Query) > 0 && len(f.Returns) > 0 {
-// 		return fmt.Errorf("cannot both query and return")
-// 	}
-
-// 	if len(f.Query) > 0 {
-// 		psm := PubSubMessage{}
-// 		if err := yaml.Unmarshal([]byte(f.Query), &psm); err != nil {
-// 			return err
-// 		}
-
-// 		return p.doPublish(topic, psm)
-// 	}
-
-// 	// When RETURNS is defined
-// 	msgs := p.messages(topic)
-// 	if len(msgs) == 0 {
-// 		return fmt.Errorf("no messages received on topic %q", topic)
-// 	}
-
-// 	cmpOpts, err := f.CmpOpts()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	expected := map[string]any{}
-// 	if err := yaml.Unmarshal([]byte(f.Returns), &expected); err != nil {
-// 		return fmt.Errorf("yaml.Unmarshal: %w", err)
-// 	}
-
-// 	var errs []error
-// 	for _, msg := range msgs {
-// 		if !cmp.Equal(msg.Msg, expected, cmpOpts...) {
-// 			errs = append(errs, fmt.Errorf("diff -want +got:\n%v", cmp.Diff(expected, msg.Msg, cmpOpts...)))
-// 		} else {
-// 			// Ok
-// 			f.AppendStore(msg.Msg, state)
-// 			return nil
-// 		}
-// 	}
-
-// 	for _, err := range errs {
-// 		logf("%v", err)
-// 	}
-
-// 	return fmt.Errorf("no matching messages received on topic %q", topic)
-// }
+	r.topics[topic] = PubSubTopic{}
+	return 0
+}
 
 func (p *PubSub) Send(topic string, msg PubSubMessage) {
 	p.lock.Lock()
