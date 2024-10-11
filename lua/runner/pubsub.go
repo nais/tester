@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 
@@ -92,11 +93,15 @@ func (r *PubSub) check(L *lua.LState) int {
 
 	var errs []string
 	for _, msg := range msgs {
+		target := map[string]any{}
 		b := map[string]any{
 			"data":       msg.Msg,
 			"attributes": msg.Attributes,
 		}
-		if err := StdCheckError(L.Context(), tbl, b); err != nil {
+		bs, _ := json.Marshal(b)
+		_ = json.Unmarshal(bs, &target)
+
+		if err := StdCheckError(L.Context(), tbl, target); err != nil {
 			errs = append(errs, err.Error())
 		} else {
 			return 0
