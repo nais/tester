@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/nais/tester/lua/spec"
 )
 
@@ -64,6 +65,7 @@ func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error 
 			continue
 		}
 
+		fmt.Println("running", f)
 		reporter.RunFile(ctx, f, func(r Reporter) {
 			s := newSuite(m, r)
 			s.run(ctx, f)
@@ -71,6 +73,50 @@ func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error 
 	}
 
 	return nil
+}
+
+func (m *Manager) Watch(ctx context.Context, dir string, reporter Reporter) error {
+	m.dir = dir
+
+	watcher, err := newBatcher(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to create watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	if err := watcher.Add(dir); err != nil {
+		return fmt.Errorf("unable to watch directory: %w", err)
+	}
+
+	go func() {
+		for err := range watcher.Errors {
+			reporter.Error("watcher error: %v", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case event, ok := <-watcher.Events():
+			if !ok {
+				return nil
+			}
+			fmt.Println("event:", event.Op, event.Name)
+
+			if event.Op.Has(fsnotify.Write) {
+				if filepath.Base(event.Name) == specFilename {
+					continue
+				}
+
+				reporter.RunFile(ctx, event.Name, func(r Reporter) {
+					s := newSuite(m, r)
+					s.run(ctx, event.Name)
+				})
+			}
+
+		}
+	}
 }
 
 func (m *Manager) GenerateSpec(dir string) error {
@@ -86,5 +132,6 @@ func (m *Manager) GenerateSpec(dir string) error {
 }
 
 func (m *Manager) doSetup(ctx context.Context, config any) (runners []spec.Runner, close func(), err error) {
+	fmt.Println("Do setup", m.dir)
 	return m.setup(ctx, m.dir, config)
 }
