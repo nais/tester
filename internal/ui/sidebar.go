@@ -37,8 +37,8 @@ func NewSidebar(ctx *ProgramContext) Sidebar {
 		},
 		ctx: ctx,
 		files: []string{
-			"confirm_team_deletion.lua",
-			"create_team.lua",
+			"team/confirm_team_deletion.lua",
+			"team/create_team.lua",
 			"ingress_types.lua",
 			"list_users.lua",
 			"manage_team_members.lua",
