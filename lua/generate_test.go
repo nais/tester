@@ -20,10 +20,29 @@ func TestGenerate(t *testing.T) {
 	GenerateSpec(buf, []spec.Runner{
 		&GQLRunner{},
 		&RESTRunner{},
-	}, &config{Supported: true, Other: 42, Field: "test"})
+	}, &config{Supported: true, Other: 42, Field: "test"}, []*spec.Function{
+		{
+			Name: "CustomHelper",
+			Args: []spec.Argument{
+				{Name: "custom", Type: []spec.ArgumentType{spec.ArgumentTypeString}, Doc: "Custom argument"},
+			},
+			Doc:  "Custom helper function",
+			Func: func(L *lua.LState) int { return 0 },
+		},
+	})
 
 	expected := `-- This file is generated. Do not edit.
 
+
+--- Ensure the field contains a substring
+---@param contains string The contained string
+---@param caseSensitive? boolean Whether to do a case sensitive check. Defaults to true
+---@return userdata
+function Contains(contains, caseSensitive)
+  print("Contains: ", contains, caseSensitive)
+  ---@diagnostic disable-next-line: return-type-mismatch
+  return {}
+end
 
 --- Ignore the field regardless of its value
 ---@return userdata
@@ -125,6 +144,12 @@ function Helper.SQLQueryRow(query)
   return {}
 end
 
+--- Custom helper function
+---@param custom string
+function Helper.CustomHelper(custom)
+  print("CustomHelper")
+end
+
 --- Configuration
 ---@class Config
 ---@field Field string
@@ -137,7 +162,7 @@ Config = {
 }
 `
 
-	if diff := cmp.Diff(buf.String(), expected); diff != "" {
+	if diff := cmp.Diff(expected, buf.String()); diff != "" {
 		t.Errorf("Generate() mismatch (-want +got):\n%s", diff)
 	}
 }

@@ -64,7 +64,7 @@ Null = {}
 
 `
 
-func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any) {
+func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any, extraHelpers []*spec.Function) {
 	sb := &strings.Builder{}
 	sb.WriteString(base)
 
@@ -83,6 +83,8 @@ func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any) {
 	if err != nil {
 		panic(err)
 	}
+
+	helpers = append(helpers, extraHelpers...)
 
 	if len(helpers) > 0 {
 		sb.WriteString("\n\n--- Helper functions\n")

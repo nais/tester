@@ -108,6 +108,13 @@ func (s *suite) run(ctx context.Context, filename string) {
 		}
 	}
 
+	for _, f := range s.mgr.helpers {
+		helperFuncs[f.Name] = func(l *lua.LState) int {
+			s.setup(L)
+			return f.Func(l)
+		}
+	}
+
 	helperMod := L.SetFuncs(L.NewTable(), helperFuncs)
 	L.SetGlobal("Helper", helperMod)
 

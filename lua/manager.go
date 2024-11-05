@@ -21,6 +21,7 @@ type Manager struct {
 	newConfigFn func() any
 	setup       SetupFunc
 	dir         string
+	helpers     []*spec.Function
 }
 
 func New(newConfigFn func() any, setup SetupFunc, runners ...spec.Runner) (*Manager, error) {
@@ -65,7 +66,6 @@ func (m *Manager) run(ctx context.Context, report reporter.Reporter) error {
 			continue
 		}
 
-		fmt.Println("running", f)
 		report.RunFile(ctx, f, func(r reporter.Reporter) {
 			s := newSuite(m, r)
 			s.run(ctx, f)
@@ -132,7 +132,6 @@ func (m *Manager) watch(ctx context.Context, dir string, report reporter.Reporte
 			if !ok {
 				return nil
 			}
-			fmt.Println("event:", event.Op, event.Name)
 
 			if event.Op.Has(fsnotify.Write) {
 				if filepath.Base(event.Name) == specFilename {
@@ -161,10 +160,14 @@ func (m *Manager) GenerateSpec(dir string) error {
 	}
 	defer f.Close()
 
-	GenerateSpec(f, m.runners, m.newConfigFn())
+	GenerateSpec(f, m.runners, m.newConfigFn(), m.helpers)
 	return nil
 }
 
 func (m *Manager) doSetup(ctx context.Context, config any) (runners []spec.Runner, close func(), err error) {
 	return m.setup(ctx, m.dir, config)
+}
+
+func (m *Manager) AddHelper(helper *spec.Function) {
+	m.helpers = append(m.helpers, helper)
 }
