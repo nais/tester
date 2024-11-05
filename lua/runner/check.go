@@ -21,7 +21,9 @@ const (
 )
 
 const (
-	emptyListOrMapString = "[[[ empty_list_or_map ]]]"
+	emptyListOrMapString        = "[[[ empty_list_or_map ]]]"
+	containsString              = "[[[ contains ]]]"
+	containsStringCaseSensitive = "[[[ contains_case_sensitive ]]]"
 )
 
 type Reporter interface {
@@ -172,12 +174,18 @@ func convertToCheck(path string, v lua.LValue, toSave map[string]string, opts cm
 			return "[[[ not_null ]]]", append(opts, notNull(path))
 		case spec.Null:
 			return nil, opts
+		case spec.ContainsString:
+			value := containsString
+			if v.CaseSensitive {
+				value = containsStringCaseSensitive
+			}
+			return value, append(opts, stringContains(path, v.Contains, v.CaseSensitive))
 		default:
 			panic("unknown userdata type " + fmt.Sprintf("%T", v))
 		}
 
 	default:
-		panic("unknown type" + v.Type().String())
+		panic("unknown type for " + path + " " + v.Type().String())
 	}
 }
 
@@ -189,6 +197,31 @@ func notNull(path string) cmp.Option {
 // allowNull allows the value to be null and will just ignore the value
 func allowNull(path string) cmp.Option {
 	return cmp.FilterPath(ignorePath(path), cmp.Ignore())
+}
+
+// stringContains ensures the string contains a substring
+func stringContains(path, substr string, caseSensitive bool) cmp.Option {
+	return cmp.FilterPath(ignorePath(path), cmp.Comparer(contains(substr, caseSensitive)))
+}
+
+func contains(substr string, caseSensitive bool) func(a, b string) bool {
+	return func(a, b string) bool {
+		var toCheck string
+		if a == containsString || a == containsStringCaseSensitive {
+			toCheck = b
+		} else if b == containsString || b == containsStringCaseSensitive {
+			toCheck = a
+		} else {
+			return false
+		}
+
+		if caseSensitive {
+			return strings.Contains(toCheck, substr)
+		}
+		return strings.Contains(
+			strings.ToLower(toCheck), strings.ToLower(substr),
+		)
+	}
 }
 
 func cmpNotNull(a, b any) bool {

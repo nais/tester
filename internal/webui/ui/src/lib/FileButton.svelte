@@ -4,20 +4,19 @@
   import Error from "./icons/Error.svelte";
   import Record from "./icons/Record.svelte";
   import Skip from "./icons/Skip.svelte";
-  import { active, Status } from "./watcher.svelte";
+  import { Status } from "./watcher.svelte";
   let {
     file,
+    active,
     onclick,
   }: {
     file: { name: string; status: Status; duration: number };
+    active: boolean;
     onclick: (name: string) => void;
   } = $props();
 </script>
 
-<button
-  onclick={() => onclick(file.name)}
-  class:active={active.file?.name == file.name}
->
+<button onclick={() => onclick(file.name)} class:active>
   <span
     class:error={file.status == Status.ERROR}
     class:done={file.status == Status.DONE}

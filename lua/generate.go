@@ -17,6 +17,16 @@ const base = `
 -- This file is generated. Do not edit.
 
 
+--- Ensure the field contains a substring
+---@param contains string The contained string
+---@param caseSensitive? boolean Whether to do a case sensitive check. Defaults to true
+---@return userdata
+function Contains(contains, caseSensitive)
+  print("Contains: ", contains, caseSensitive)
+  ---@diagnostic disable-next-line: return-type-mismatch
+  return {}
+end
+
 --- Ignore the field regardless of its value
 ---@return userdata
 function Ignore()
@@ -207,7 +217,7 @@ func ConvertToGoType(v lua.LValue) any {
 			return l
 		}
 	default:
-		panic("unknown type" + v.Type().String())
+		panic("unknown type: " + v.Type().String())
 	}
 }
 
@@ -239,7 +249,7 @@ func writeConfig(sb *strings.Builder, cfg any) {
 		case reflect.Bool:
 			sb.WriteString("boolean")
 		default:
-			panic(fmt.Sprintf("unknown type: %s", field.Type.Kind()))
+			panic(fmt.Sprintf("unknown type while writing config: %s", field.Type.Kind()))
 		}
 		sb.WriteString("\n")
 	}
@@ -257,7 +267,7 @@ func writeConfig(sb *strings.Builder, cfg any) {
 		case reflect.Bool:
 			fmt.Fprintf(sb, "%t", v.Field(i).Bool())
 		default:
-			panic(fmt.Sprintf("unknown type: %s", field.Type.Kind()))
+			panic(fmt.Sprintf("unknown type while writing config2: %s", field.Type.Kind()))
 		}
 		sb.WriteString(",\n")
 	}

@@ -82,15 +82,27 @@ func (m *Manager) RunUI(ctx context.Context, dir string) error {
 
 	wg, ctx := errgroup.WithContext(ctx)
 	wg.Go(func() error {
-		return m.watch(ctx, dir, reporter)
+		err := m.watch(ctx, dir, reporter)
+		if err != nil {
+			fmt.Println("WATCH ERROR", err)
+		}
+		return err
 	})
 
 	wg.Go(func() error {
-		return m.run(ctx, reporter)
+		err := m.run(ctx, reporter)
+		if err != nil {
+			fmt.Println("RUN ERROR", err)
+		}
+		return err
 	})
 
 	wg.Go(func() error {
-		return webui.Run(ctx, reporter)
+		err := webui.Run(ctx, reporter)
+		if err != nil {
+			fmt.Println("WEBUI ERROR", err)
+		}
+		return err
 	})
 	return wg.Wait()
 }
@@ -154,6 +166,5 @@ func (m *Manager) GenerateSpec(dir string) error {
 }
 
 func (m *Manager) doSetup(ctx context.Context, config any) (runners []spec.Runner, close func(), err error) {
-	fmt.Println("Do setup", m.dir)
 	return m.setup(ctx, m.dir, config)
 }

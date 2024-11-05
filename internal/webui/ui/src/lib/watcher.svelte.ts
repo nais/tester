@@ -116,55 +116,101 @@ function createFile(file: EventFile): File {
 
 class Watcher {
   files: File[] = $state([]);
+  #eventSource?: EventSource;
 
   constructor() {
-    new EventSource("/events").onmessage = (event) => {
-      const data = JSON.parse(event.data) as Event;
-      switch (data.type) {
-        case "init":
-          this.files = Object.values(data.data)
-            .map(createFile)
-            .sort((a, b) => a.name.localeCompare(b.name));
-          break;
-        case "start":
-        case "end":
-          const existing = this.files.find(
-            (file) => file.name === data.data.name
-          );
-          if (existing) {
-            existing.duration = data.data.duration;
-            existing.subTests = data.data.subTests?.map(createSubTest) || [];
-          } else {
-            const file = createFile(data.data);
-            this.files.push(file);
-          }
+    this.#newEventSource();
+  }
 
-          break;
+  #newEventSource() {
+    this.#eventSource?.close();
+    this.#eventSource = new EventSource("/events");
+    this.#eventSource.onmessage = this.#handleMessage.bind(this);
+    this.#eventSource.onerror = this.#handleError.bind(this);
+  }
 
-        // Ignore these events for now
-        // case "error":
-        //   break;
-        // case "start_test":
-        // case "end_test":
-        //   const file = this.files.find(
-        //     (file) => file.name === data.data.filename
-        //   );
-        //   if (file) {
-        //     const existing = file.subTests.find(
-        //       (subTest) => subTest.name === data.data.name
-        //     );
+  #handleError() {
+    const t = this;
+    setTimeout(() => {
+      t.#newEventSource();
+    }, 1000);
+  }
 
-        //     if (existing) {
-        //       existing.duration = data.data.duration;
-        //       existing.errors = data.data.errors;
-        //     } else {
-        //       const subTest = createSubTest(data.data);
-        //       file.subTests.push(subTest);
-        //     }
-        //   }
-        //   break;
+  #handleMessage(event: MessageEvent) {
+    const data = JSON.parse(event.data) as Event;
+    switch (data.type) {
+      case "init":
+        this.files = Object.values(data.data)
+          .map(createFile)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "start":
+      case "end": {
+        const existing = this.files.find(
+          (file) => file.name === data.data.name
+        );
+        if (existing) {
+          existing.duration = data.data.duration;
+          // existing.subTests = existing.subTests.map((subTest) => {
+          //   subTest.duration = 0;
+          //   subTest.errors = null;
+          //   return subTest;
+          // });
+        } else {
+          const file = createFile(data.data);
+          this.files.push(file);
+          console.log("NEW FILE", file);
+        }
+
+        break;
       }
-    };
+      case "end_test":
+      case "start_test": {
+        const file = this.files.find(
+          (file) => file.name === data.data.filename
+        );
+
+        if (!file) {
+          console.log("NO FILE", data.data.filename);
+          return;
+        }
+
+        const existingSubTest = file.subTests.find(
+          (subTest) => subTest.name === data.data.name
+        );
+
+        if (existingSubTest) {
+          existingSubTest.duration = data.data.duration;
+          existingSubTest.errors = data.data.errors;
+        } else {
+          const subTest = createSubTest(data.data);
+          file.subTests.push(subTest);
+        }
+      }
+
+      // Ignore these events for now
+      // case "error":
+      //   break;
+      // case "start_test":
+      // case "end_test":
+      //   const file = this.files.find(
+      //     (file) => file.name === data.data.filename
+      //   );
+      //   if (file) {
+      //     const existing = file.subTests.find(
+      //       (subTest) => subTest.name === data.data.name
+      //     );
+
+      //     if (existing) {
+      //       existing.duration = data.data.duration;
+      //       existing.errors = data.data.errors;
+      //     } else {
+      //       const subTest = createSubTest(data.data);
+      //       file.subTests.push(subTest);
+      //     }
+      //   }
+      //   break;
+    }
   }
 }
 

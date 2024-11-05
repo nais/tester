@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -52,6 +53,11 @@ func (t *Test) End() {
 }
 
 func (t *Test) AddError(msg string, args ...any) {
+	if t == nil {
+		fmt.Printf(msg, args...)
+		fmt.Println()
+		return
+	}
 	t.lock.Lock()
 	defer t.lock.Unlock()
 

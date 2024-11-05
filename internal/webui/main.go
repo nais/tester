@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-//go:embed static
+//go:embed static/*
 var static embed.FS
 
 type Option func(*options)
@@ -33,8 +33,16 @@ func Run(ctx context.Context, reporter *SSEReporter, opts ...Option) error {
 		opt(&o)
 	}
 
+	if o.root == static {
+		f, err := fs.Sub(static, "static")
+		if err != nil {
+			return err
+		}
+		o.root = f
+	}
+
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(o.root)))
+	mux.Handle("/", &noCache{handler: http.FileServerFS(o.root)})
 	mux.Handle("/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Handle Server sent events
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -79,4 +87,15 @@ func Run(ctx context.Context, reporter *SSEReporter, opts ...Option) error {
 		return err
 	}
 	return nil
+}
+
+type noCache struct {
+	handler http.Handler
+}
+
+func (n *noCache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	n.handler.ServeHTTP(w, r)
 }

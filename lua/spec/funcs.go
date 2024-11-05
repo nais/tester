@@ -47,3 +47,23 @@ func NotNull(L *lua.LState) int {
 
 	return 1
 }
+
+type ContainsString struct {
+	Contains      string
+	CaseSensitive bool
+}
+
+func Contains(L *lua.LState) int {
+	contains := L.CheckString(1)
+	caseSensitive := L.OptBool(2, true)
+
+	ud := L.NewUserData()
+	ud.Value = ContainsString{
+		Contains:      contains,
+		CaseSensitive: caseSensitive,
+	}
+
+	L.Push(ud)
+
+	return 1
+}
