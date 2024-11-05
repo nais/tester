@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/nais/tester/lua/reporter"
 )
 
 type JSONReporter struct {
@@ -18,7 +20,7 @@ func NewJSONReporter(w io.Writer) *JSONReporter {
 	return &JSONReporter{w: json.NewEncoder(w)}
 }
 
-func (r *JSONReporter) RunFile(ctx context.Context, filename string, fn func(Reporter)) {
+func (r *JSONReporter) RunFile(ctx context.Context, filename string, fn func(reporter.Reporter)) {
 	_ = r.w.Encode(map[string]any{
 		"file":   filename,
 		"action": "start",
@@ -30,7 +32,7 @@ func (r *JSONReporter) RunFile(ctx context.Context, filename string, fn func(Rep
 	})
 }
 
-func (r *JSONReporter) RunTest(ctx context.Context, runner, name string, fn func(Reporter)) {
+func (r *JSONReporter) RunTest(ctx context.Context, runner, name string, fn func(reporter.Reporter)) {
 	_ = r.w.Encode(map[string]any{
 		"file":   r.file,
 		"name":   name,

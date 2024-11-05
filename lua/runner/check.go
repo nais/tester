@@ -185,7 +185,7 @@ func convertToCheck(path string, v lua.LValue, toSave map[string]string, opts cm
 		}
 
 	default:
-		panic("unknown type" + v.Type().String())
+		panic("unknown type for " + path + " " + v.Type().String())
 	}
 }
 

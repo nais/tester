@@ -7,7 +7,11 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/nais/tester/internal/webui"
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
+	"golang.org/x/sync/errgroup"
 )
 
 type SetupFunc func(ctx context.Context, dir string, config any) (runners []spec.Runner, close func(), err error)
@@ -45,16 +49,13 @@ func New(newConfigFn func() any, setup SetupFunc, runners ...spec.Runner) (*Mana
 	}, nil
 }
 
-type Reporter interface {
-	RunFile(ctx context.Context, filename string, fn func(Reporter))
-	RunTest(ctx context.Context, runner, name string, fn func(Reporter))
-	Error(msg string, args ...any)
+func (m *Manager) Run(ctx context.Context, dir string, report reporter.Reporter) error {
+	m.dir = dir
+	return m.run(ctx, report)
 }
 
-func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error {
-	m.dir = dir
-
-	entries, err := filepath.Glob(filepath.Join(dir, "*.lua"))
+func (m *Manager) run(ctx context.Context, report reporter.Reporter) error {
+	entries, err := filepath.Glob(filepath.Join(m.dir, "*.lua"))
 	if err != nil {
 		return fmt.Errorf("reading fs directory: %w", err)
 	}
@@ -64,13 +65,92 @@ func (m *Manager) Run(ctx context.Context, dir string, reporter Reporter) error 
 			continue
 		}
 
-		reporter.RunFile(ctx, f, func(r Reporter) {
+		fmt.Println("running", f)
+		report.RunFile(ctx, f, func(r reporter.Reporter) {
 			s := newSuite(m, r)
 			s.run(ctx, f)
 		})
 	}
 
 	return nil
+}
+
+func (m *Manager) RunUI(ctx context.Context, dir string) error {
+	m.dir = dir
+
+	reporter := webui.NewSSEReporter(dir)
+
+	wg, ctx := errgroup.WithContext(ctx)
+	wg.Go(func() error {
+		err := m.watch(ctx, dir, reporter)
+		if err != nil {
+			fmt.Println("WATCH ERROR", err)
+		}
+		return err
+	})
+
+	wg.Go(func() error {
+		err := m.run(ctx, reporter)
+		if err != nil {
+			fmt.Println("RUN ERROR", err)
+		}
+		return err
+	})
+
+	wg.Go(func() error {
+		err := webui.Run(ctx, reporter)
+		if err != nil {
+			fmt.Println("WEBUI ERROR", err)
+		}
+		return err
+	})
+	return wg.Wait()
+}
+
+func (m *Manager) watch(ctx context.Context, dir string, report reporter.Reporter) error {
+	watcher, err := newBatcher(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to create watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	if err := watcher.Add(dir); err != nil {
+		return fmt.Errorf("unable to watch directory: %w", err)
+	}
+
+	go func() {
+		for err := range watcher.Errors {
+			report.Error("watcher error: %v", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case event, ok := <-watcher.Events():
+			if !ok {
+				return nil
+			}
+			fmt.Println("event:", event.Op, event.Name)
+
+			if event.Op.Has(fsnotify.Write) {
+				if filepath.Base(event.Name) == specFilename {
+					continue
+				}
+
+				report.RunFile(ctx, event.Name, func(r reporter.Reporter) {
+					s := newSuite(m, r)
+					s.run(ctx, event.Name)
+				})
+			} else if event.Op.Has(fsnotify.Remove) {
+				if sse, ok := report.(*webui.SSEReporter); ok {
+					sse.RemoveFile(event.Name)
+				}
+			}
+
+		}
+	}
 }
 
 func (m *Manager) GenerateSpec(dir string) error {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/runner"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
@@ -17,12 +18,12 @@ type suite struct {
 	runners   []spec.Runner
 	mgr       *Manager
 	state     *lua.LTable
-	reporter  Reporter
+	reporter  reporter.Reporter
 	cfg       any
 	cleanup   func()
 }
 
-func newSuite(mgr *Manager, reporter Reporter) *suite {
+func newSuite(mgr *Manager, reporter reporter.Reporter) *suite {
 	var cfg any
 	if mgr.newConfigFn != nil {
 		cfg = mgr.newConfigFn()
@@ -134,7 +135,7 @@ func (s *suite) newTest(runnerName string, _ *lua.LState) lua.LGFunction {
 			L.RaiseError("runner %q not found", runnerName)
 		}
 
-		s.reporter.RunTest(L.Context(), actualRunner.Name(), name, func(r Reporter) {
+		s.reporter.RunTest(L.Context(), actualRunner.Name(), name, func(r reporter.Reporter) {
 			ctx := runner.WithSaveFunc(L.Context(), s.save)
 			L.SetContext(ctx)
 
