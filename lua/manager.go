@@ -56,16 +56,23 @@ func (m *Manager) Run(ctx context.Context, dir string, report reporter.Reporter)
 }
 
 func (m *Manager) run(ctx context.Context, report reporter.Reporter) error {
-	entries, err := filepath.Glob(filepath.Join(m.dir, "*.lua"))
+	entries := make([]string, 0)
+	err := filepath.WalkDir(m.dir, func(path string, d os.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case d.IsDir() || d.Name() == specFilename:
+			return nil
+		case filepath.Ext(d.Name()) == ".lua":
+			entries = append(entries, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("reading fs directory: %w", err)
 	}
 
 	for _, f := range entries {
-		if filepath.Base(f) == specFilename {
-			continue
-		}
-
 		report.RunFile(ctx, f, func(r reporter.Reporter) {
 			s := newSuite(m, r)
 			s.run(ctx, f)
