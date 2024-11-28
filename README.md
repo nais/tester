@@ -1,4 +1,4 @@
-# Integrartion test framework
+# Integration test framework
 
 This package contains a custom integration framework that let's you test
 the entire system using a folder with test files. There's support to test
