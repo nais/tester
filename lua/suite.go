@@ -179,10 +179,13 @@ func (s *suite) setup(L *lua.LState) {
 	}
 
 	var err error
-	s.runners, s.cleanup, err = s.mgr.doSetup(L.Context(), s.cfg)
+	var ctx context.Context
+	ctx, s.runners, s.cleanup, err = s.mgr.doSetup(L.Context(), s.cfg)
 	if err != nil {
 		L.RaiseError("error during setup: %v", err)
 	}
+
+	L.SetContext(ctx)
 
 	s.setupDone = true
 }

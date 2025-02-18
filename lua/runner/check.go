@@ -36,7 +36,7 @@ func WithSaveFunc(ctx context.Context, fn SaveFunc) context.Context {
 
 func StdCheck(L *lua.LState, tbl *lua.LTable, b any) {
 	if err := StdCheckError(L.Context(), tbl, b); err != nil {
-		L.RaiseError(err.Error())
+		L.RaiseError("%v", err.Error())
 	}
 }
 

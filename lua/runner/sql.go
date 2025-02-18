@@ -116,7 +116,14 @@ func (s *SQL) check(L *lua.LState) int {
 // }
 
 func (s *SQL) query(L *lua.LState) int {
-	s.results = s.doQuery(L)
+	res := s.doQuery(L)
+
+	ret := make([]any, len(res))
+	for i, row := range res {
+		ret[i] = row
+	}
+
+	s.results = ret
 
 	return 0
 }

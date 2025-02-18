@@ -30,8 +30,8 @@ import (
 func TestRunner(skipPostgres bool) (*testmanager.Manager, error) {
 	ctx := context.Background()
 
-	var setup testmanager.SetupFunc = func(ctx context.Context, dir string, config any) (runners []spec.Runner, close func(), err error) {
-		return nil, nil, fmt.Errorf("no setup function provided")
+	var setup testmanager.SetupFunc = func(ctx context.Context, dir string, config any) (retCtx context.Context, runners []spec.Runner, close func(), err error) {
+		return ctx, nil, nil, fmt.Errorf("no setup function provided")
 	}
 	if !skipPostgres {
 		setup = newManager(ctx)
@@ -54,14 +54,14 @@ func newManager(ctx context.Context) testmanager.SetupFunc {
 		panic(err)
 	}
 
-	return func(ctx context.Context, _ string, _ any) ([]spec.Runner, func(), error) {
+	return func(ctx context.Context, _ string, _ any) (context.Context, []spec.Runner, func(), error) {
 		ctx, done := context.WithCancel(ctx)
 		cleanups := []func(){}
 
 		db, pool, cleanup, err := newDB(ctx, container, connStr)
 		if err != nil {
 			done()
-			return nil, nil, err
+			return ctx, nil, nil, err
 		}
 		cleanups = append(cleanups, cleanup)
 
@@ -79,7 +79,7 @@ func newManager(ctx context.Context) testmanager.SetupFunc {
 			runner.NewSQLRunner(pool),
 		}
 
-		return runners, func() {
+		return ctx, runners, func() {
 			for _, cleanup := range cleanups {
 				cleanup()
 			}

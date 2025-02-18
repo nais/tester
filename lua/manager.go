@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type SetupFunc func(ctx context.Context, dir string, config any) (runners []spec.Runner, close func(), err error)
+type SetupFunc func(ctx context.Context, dir string, config any) (retCtx context.Context, runners []spec.Runner, close func(), err error)
 
 type Manager struct {
 	runners     []spec.Runner
@@ -171,7 +171,7 @@ func (m *Manager) GenerateSpec(dir string) error {
 	return nil
 }
 
-func (m *Manager) doSetup(ctx context.Context, config any) (runners []spec.Runner, close func(), err error) {
+func (m *Manager) doSetup(ctx context.Context, config any) (retCtx context.Context, runners []spec.Runner, close func(), err error) {
 	return m.setup(ctx, m.dir, config)
 }
 
