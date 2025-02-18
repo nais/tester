@@ -74,8 +74,7 @@ func (s *REST) Functions() []*spec.Function {
 
 func (r *REST) send(L *lua.LState) int {
 	if r.response != nil {
-		L.RaiseError("send already called")
-		return 0
+		r.response = nil
 	}
 
 	ctx := L.Context()
