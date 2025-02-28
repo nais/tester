@@ -10,3 +10,4 @@ sql:
         sql_package: "pgx/v5"
         emit_result_struct_pointers: true
         emit_params_struct_pointers: true
+        omit_sqlc_version: true

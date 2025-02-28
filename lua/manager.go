@@ -17,11 +17,12 @@ import (
 type SetupFunc func(ctx context.Context, dir string, config any) (retCtx context.Context, runners []spec.Runner, close func(), err error)
 
 type Manager struct {
-	runners     []spec.Runner
-	newConfigFn func() any
-	setup       SetupFunc
-	dir         string
-	helpers     []*spec.Function
+	runners       []spec.Runner
+	newConfigFn   func() any
+	setup         SetupFunc
+	dir           string
+	helpers       []*spec.Function
+	typeMetatable []*spec.Typemetatable
 }
 
 func New(newConfigFn func() any, setup SetupFunc, runners ...spec.Runner) (*Manager, error) {
@@ -167,7 +168,7 @@ func (m *Manager) GenerateSpec(dir string) error {
 	}
 	defer f.Close()
 
-	GenerateSpec(f, m.runners, m.newConfigFn(), m.helpers)
+	GenerateSpec(f, m.runners, m.newConfigFn(), m.helpers, m.typeMetatable)
 	return nil
 }
 
@@ -177,4 +178,8 @@ func (m *Manager) doSetup(ctx context.Context, config any) (retCtx context.Conte
 
 func (m *Manager) AddHelper(helper *spec.Function) {
 	m.helpers = append(m.helpers, helper)
+}
+
+func (m *Manager) AddTypemetatable(tmt *spec.Typemetatable) {
+	m.typeMetatable = append(m.typeMetatable, tmt)
 }
