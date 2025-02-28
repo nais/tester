@@ -118,6 +118,33 @@ func (s *suite) run(ctx context.Context, filename string) {
 	helperMod := L.SetFuncs(L.NewTable(), helperFuncs)
 	L.SetGlobal("Helper", helperMod)
 
+	for _, t := range s.mgr.typeMetatable {
+		mt := L.NewTypeMetatable(t.Name)
+		L.SetGlobal(t.Name, mt)
+		// static attributes
+		L.SetField(mt, "new", L.NewFunction(func(L *lua.LState) int {
+			s.setup(L)
+			return t.Init.Func(L)
+		}))
+		// methods
+		index := map[string]lua.LGFunction{}
+		for _, f := range t.GetSet {
+			index[f.Name] = func(L *lua.LState) int {
+				s.setup(L)
+				return f.Func(L)
+			}
+		}
+
+		for _, f := range t.Methods {
+			index[f.Name] = func(L *lua.LState) int {
+				s.setup(L)
+				return f.Func(L)
+			}
+		}
+		L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), index))
+
+	}
+
 	if err := L.DoFile(filename); err != nil {
 		s.reporter.Error(err.Error())
 	}
@@ -163,6 +190,11 @@ func (s *suite) newTest(runnerName string, _ *lua.LState) lua.LGFunction {
 				r.Error(err.Error())
 			}
 		})
+
+		if hook, ok := actualRunner.(spec.RunnerAfterTest); ok {
+			hook.AfterTest(L.Context())
+		}
+
 		return 0
 	}
 }

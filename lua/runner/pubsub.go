@@ -122,6 +122,10 @@ func (r *PubSub) emptyTopic(L *lua.LState) int {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	if _, ok := r.topics[topic]; !ok {
+		return 0
+	}
+
 	r.topics[topic] = PubSubTopic{}
 	return 0
 }

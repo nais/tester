@@ -29,7 +29,7 @@ func TestGenerate(t *testing.T) {
 			Doc:  "Custom helper function",
 			Func: func(L *lua.LState) int { return 0 },
 		},
-	})
+	}, nil)
 
 	expected := `-- This file is generated. Do not edit.
 

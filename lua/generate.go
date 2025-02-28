@@ -64,7 +64,7 @@ Null = {}
 
 `
 
-func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any, extraHelpers []*spec.Function) {
+func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any, extraHelpers []*spec.Function, metaTypes []*spec.Typemetatable) {
 	sb := &strings.Builder{}
 	sb.WriteString(base)
 
@@ -92,6 +92,13 @@ func GenerateSpec(w io.Writer, runners []spec.Runner, cfg any, extraHelpers []*s
 		sb.WriteString("Helper = {}\n\n")
 		for _, f := range helpers {
 			writeFunc(sb, "Helper", f)
+		}
+	}
+
+	if len(metaTypes) > 0 {
+		sb.WriteString("\n\n--- Type metatables\n")
+		for _, t := range metaTypes {
+			sb.WriteString(t.String())
 		}
 	}
 
@@ -158,6 +165,11 @@ func writeFunc(sb *strings.Builder, scope string, f *spec.Function) {
 			sb.WriteString("false")
 		case spec.ArgumentTypeTable:
 			sb.WriteString("{}")
+		default:
+			switch f.Returns[0].(type) {
+			case spec.ArgumentTypeTableLiteral, spec.ArgumentTypeArray:
+				sb.WriteString("{}")
+			}
 		}
 
 		sb.WriteString("\n")

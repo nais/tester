@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,12 +13,16 @@ import (
 )
 
 type GQL struct {
-	server http.Handler
+	server  http.Handler
+	headers http.Header
 
 	results map[string]any
 }
 
-var _ spec.Runner = (*GQL)(nil)
+var (
+	_ spec.Runner          = (*GQL)(nil)
+	_ spec.RunnerAfterTest = (*GQL)(nil)
+)
 
 func NewGQLRunner(server http.Handler) *GQL {
 	return &GQL{server: server}
@@ -47,6 +52,23 @@ func (g *GQL) Functions() []*spec.Function {
 			Func: g.query,
 		},
 		StdCheckDefinition(g.check),
+		{
+			Name: "addHeader",
+			Args: []spec.Argument{
+				{
+					Name: "key",
+					Type: []spec.ArgumentType{spec.ArgumentTypeString},
+					Doc:  "The header key",
+				},
+				{
+					Name: "value",
+					Type: []spec.ArgumentType{spec.ArgumentTypeString},
+					Doc:  "The header value",
+				},
+			},
+			Doc:  "Add a header to the request",
+			Func: g.addHeader,
+		},
 	}
 }
 
@@ -78,6 +100,10 @@ func (g *GQL) query(L *lua.LState) int {
 
 	req.Header.Add("Content-Type", "application/json")
 
+	for k := range g.headers {
+		req.Header.Add(k, g.headers.Get(k))
+	}
+
 	headers.ForEach(func(k, v lua.LValue) {
 		req.Header.Add(k.String(), v.String())
 	})
@@ -98,12 +124,19 @@ func (g *GQL) check(L *lua.LState) int {
 	return 0
 }
 
-// func (g *GQL) Run(ctx context.Context, logf func(format string, args ...any), body []byte, state map[string]any) error {
-// 	f, err := parser.Parse(body, state)
-// 	if err != nil {
-// 		return fmt.Errorf("gql.Parse: %w", err)
-// 	}
+func (g *GQL) addHeader(L *lua.LState) int {
+	key := L.CheckString(1)
+	value := L.CheckString(2)
 
-// 	return f.Execute(state, func() (any, error) {
-// 	})
-// }
+	if g.headers == nil {
+		g.headers = http.Header{}
+	}
+
+	g.headers.Add(key, value)
+
+	return 0
+}
+
+func (g *GQL) AfterTest(ctx context.Context) {
+	g.headers = nil
+}
