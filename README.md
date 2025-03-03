@@ -1,260 +1,239 @@
 # Integration test framework
 
-This package contains a custom integration framework that let's you test
-the entire system using a folder with test files. There's support to test
-the system using:
+This package contains a custom integration framework that let's you test your Go application using a set of Lua tests.
+There's support to test the system using:
 
 - REST
 - GraphQL
 - SQL
 - PubSub
 
-After each file is run, the reconciliation loop is run to ensure that the
-system is in a stable state before running the next test.
-To disable this, set the `reconcile` flag to `false` in the config on each environment.
+Other types of tests can be added by implementing the `Runner` interface.
+
+## Setup
+
+For tester to work, a manager has to be created.
+This is where the runners and capabilities are registered.
+
+See [example/internal/integration/manager.go](./example/internal/integration/manager.go) for full example.
+
+To run the tests, create a `_test.go` file containing the following:
+
+```go
+package integration
+
+import (
+	"context"
+	"testing"
+
+	"github.com/nais/tester/lua"
+)
+
+func TestIntegration(t *testing.T) {
+	mgr, err := TestRunner(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	if err := mgr.Run(ctx, "./testdata", lua.NewTestReporter(t)); err != nil {
+		t.Fatal(err)
+	}
+}
+```
+
+This will run all tests within the `testdata` folder.
+
+### Generate Lua spec
+
+To help with writing tests, you can generate a Lua spec file from the Go code.
+This will generate a Lua file with all the available functions and their parameters.
+
+This also requires a manager to be created.
+See [example/internal/tools/tester_spec/main.go](./example/internal/tools/tester_spec/main.go) for full example.
+
+### Graphical UI
+
+When writing tests, rerunning the entire test suite can be time consuming.
+To help with the case where there's only Lua tests that are changed, a graphical UI can be used to run the tests.
+
+See [example/internal/tools/tester_run/main.go](./example/internal/tools/tester_run/main.go) for full example.
+The `--ui` flag will start a web server that can be accessed at `http://localhost:9876`.
 
 ## How to use it
 
-Within the `testdata` folder you can create a folder with the name of the
-test you want to run. Within that folder you can create one or more files
-defining your test cases as described below.
+Within the test folder, every Lua file is considered a standalone environment.
+The tests are run in order of declaration.
 
-### Templating
+### State
 
-The entire test file is run through a templating engine before being run.
+You can store state between tests using the `State` object.
+By saving state, use `Save(name)` when comparing the expected result with the actual result.
 
-If you store fields from the response of a test, using `STORE <key>=<response key>`, you can access them using `{{ .<key> }}`.
+```lua
+Test.gql("test users", function(t)
+  t.query "..."
+  t.check {
+    data = {
+      users = {
+        { id = Save("user1") },
+        { id = Save("user2") },
+      }
+    }
+  }
+end)
+
+Test.gql("test user", function(t)
+  t.query(string.format([[{ usuer(id: "%s") { ... } }]], State.user1))
+  t.check { /* ... */ }
+end)
+```
+
+### Nil checks
+
+When using `nil` in lua, the field is removed when comparing the results.
+If you want to check that a field is `nil`, use the `Null` object.
+
+### Ignoring fields
+
+When comparing the expected results and the field is dynamic, you can use the `Ignore` function.
+This will ignore the field when comparing the results.
+If you want to check if the field is set, use the `NotNull()` function.
+
+```lua
+Test.rest("test users", function(t)
+  t.send("GET", "/users")
+  t.check {
+    data = {
+      users = {
+        { id = Ignore(), name = "John" },
+        { id = NotNull(), name = "Jane" },
+      }
+    }
+  }
+end)
+```
+
+### String contains
+
+When comparing strings, you can use the `Contains` function.
+This will check if the string contains the given substring.
+
+```lua
+Test.rest("test users", function(t)
+  t.send("GET", "/users")
+  t.check {
+    data = {
+      users = {
+        { id = Ignore(), name = Contains("John") },
+        { id = NotNull(), name = "Jane" },
+      }
+    }
+  }
+end)
+```
 
 ## Configuration
 
-You can configure the test framework using a file called `00_config.yaml`.
+A configuration struct can be used to allow each test to have different configurations.
+The configuration is set on the `Config` object, and should be set as the first thing in the test.
 
-To see the full list of configuration options, see the `Config` struct in
-[`testrunner_config.go`](./testrunner_config.go)
+```lua
+Config.seedDB = true
+Config.loadData = "./data.json"
 
-### Example
-
-```yaml
-# List of tenants within the test
-tenants:
-  - name: tenant23
-    ci: true # This tenant has the CI flag set to true
-    envs:
-      # List of environments within the tenant
-      - kind: management # One of management, tenant, onprem, legacy
-        name: management
-        ci: true # This environment has the CI flag set to true
-        naisd: # Configuration for the naisd component
-          enabled: true # Enable naisd
-          successfullMessages: 100 # How many successfull messages to return until starting to return errors
-        reconcile: true # Set the reconcile flag to true
-
-      - kind: tenant
-        name: nonci
-        ci: false
-        naisd:
-          enabled: true
-          successfullMessages: 100
-        reconcile: true
+Test.gql("my test", function(t)
+  -- ...
 ```
 
-## REST
+## Runners
 
-To test a REST endpoint, create a file with the extension `.rest.test`.
+### Graphql
 
-The overall structure of the file is as follows:
+The GraphQL runner can be used like this:
 
-```
-[METHOD] [PATH]
+```lua
+Test.gql("test users", function(t)
+  t.addHeader("Authorization", "Bearer token")
 
-[BODY]
+  t.query [[{ users { id name } }]]
 
-RETURNS
-
-OPTION [OPTIONS]
-
-ENDOPTS
-
-[EXPECTED RESPONSE]
-
-STORE [NAME]=[JSONPATH]
-```
-
-### Example
-
-```
-POST /github/rollout
-
-{
-  "chart": "oci://clamav",
-  "version": "0.1.0-feature"
-}
-
-RETURNS
-
-OPTION responseCode = 201
-OPTION id=IGNORE
-
-ENDOPTS
-
-{
-  "envNotAvailable": ["tenant"]
-}
-
-STORE rollout_id=id
-```
-
-### Options
-
-| Option         | Description                                    |
-| -------------- | ---------------------------------------------- |
-| `responseCode` | The expected response code. Defaults to `200`. |
-| `key=IGNORE`   | Ignore the `key` when comparing the response.  |
-
-### GraphQL
-
-To test a GraphQL endpoint, create a file with the extension `.gql.test`.
-
-The overall structure of the file is as follows:
-
-```
-[QUERY]
-
-RETURNS
-
-OPTION [OPTIONS]
-
-ENDOPTS
-
-[EXPECTED RESPONSE]
-
-STORE [NAME]=[JSONPATH]
-```
-
-### Example
-
-```
-query {
-  applications {
-    id
-    name
-    environments {
-      name
+  t.check {
+    data = {
+      users = {
+        { id = Ignore(), name = "John" },
+        { id = NotNull(), name = "Jane" },
+      }
     }
   }
-}
+end)
+```
 
-RETURNS
+### REST
 
-OPTION id=IGNORE
+The REST runner can be used like this:
 
-{
-  "data": {
-    "applications": {
-      "name": "my-app",
-      "environments": [
-        {
-          "name": "t1"
-        },
-        {
-          "name": "t2"
-        }
-      ]
+```lua
+Test.rest("test users", function(t)
+  t.send("POST", "/users", { name = "John" })
+  t.check {
+    data = {
+      users = {
+        { id = Ignore(), name = "John" },
+        { id = NotNull(), name = "Jane" },
+      }
     }
   }
-}
-
-STORE app_id=id
+end)
 ```
 
-### Options
+### SQL
 
-| Option       | Description                                   |
-| ------------ | --------------------------------------------- |
-| `key=IGNORE` | Ignore the `key` when comparing the response. |
+The SQL runner can be used like this:
 
-## SQL
+```lua
+Test.sql("test users", function(t)
+  t.query("SELECT * FROM users")
+  t.check {
+    { id = Ignore(), name = "John" },
+    { id = NotNull(), name = "Jane" },
+  }
+end)
 
-To test a SQL query, create a file with the extension `.sql.test`.
-
-The overall structure of the file is as follows:
-
-You can alter the query to return a single row by using the following comment in the top of the file:
-
-```sql
--- type: row
+Test.sql("test single users", function(t)
+  t.query("SELECT * FROM users WHERE id = 1")
+  t.check {
+    id = Ignore(),
+    name = "John",
+  }
+end)
 ```
 
-```
-[QUERY]
+#### Helpers
 
-RETURNS
+`Helper.SQLExec(q, ...)` can be used to execute a SQL query.
 
-[EXPECTED RESPONSE AS JSON]
-```
+`Helper.SQLQueryRow(q, ...)` can be used to query a single row.
 
-### Example
+`Helper.SQLQuery(q, ...)` can be used to query multiple rows.
 
-```
-SELECT count(1)::float
-FROM tenants;
+### PubSub
 
-RETURNS
+The PubSub runner checks if a message matches what is expected.
+The runner will not wait for the message to be received, so the test should be run after the message is sent.
 
-[{"count": 1}]
-```
-
-```
--- type: row
-SELECT count(1)::float
-FROM tenants;
-
-RETURNS
-
-{"count": 1}
+```lua
+Test.pubsub("test users", function(t)
+  t.check "my-topic", {
+    id = Ignore(),
+    name = "John",
+  }
+end)
 ```
 
-## PubSub
+#### Helpers
 
-To test a PubSub message, create a file with the extension `.pubsub.test`.
-
-There's two types of cases with PubSub, one for sending and one for receiving.
-
-### Sending
-
-Currently untested, but might work.
-
-```
-{DATA}
-
-RETURNS
-
-OPTION topic=[TOPIC]
-
-ENDOPTS
-```
-
-### Receiving
-
-```
-RETURNS
-
-OPTION topic=[TOPIC]
-OPTION id=IGNORE
-
-ENDOPTS
-
-{DATA}
-
-STORE id=id
-```
-
-### Options
-
-| Option       | Description                                   |
-| ------------ | --------------------------------------------- |
-| `topic`      | The topic to listen or send to. **Required**  |
-| `key=IGNORE` | Ignore the `key` when comparing the response. |
+`Helper.emptyPubSubTopic(topic)` can be used to empty a topic.
 
 ## Code generated by GitHub Copilot
 
