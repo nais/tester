@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/runner"
 	"github.com/nais/tester/lua/spec"
