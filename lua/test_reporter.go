@@ -2,6 +2,7 @@ package lua
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/nais/tester/lua/reporter"
@@ -30,4 +31,8 @@ func (r *TestReporter) RunTest(ctx context.Context, runner string, name string, 
 
 func (r *TestReporter) Error(msg string, args ...any) {
 	r.t.Errorf(msg, args...)
+}
+
+func (r *TestReporter) Info(info reporter.Info) {
+	r.t.Logf("[%s] %s: %s", info.Type, info.Title, fmt.Sprintf("%.100s", info.Content))
 }

@@ -5,8 +5,25 @@ export enum Status {
 	"SKIP",
 }
 
+export type InfoType = "helper" | "request" | "response" | "query" | "result";
+
+export interface InfoArg {
+	name?: string;
+	value: string;
+}
+
+export interface TestInfo {
+	type: InfoType;
+	title: string;
+	content: string;
+	args?: InfoArg[];
+	timestamp: number;
+	order: number;
+}
+
 export class SubTest {
 	name: string;
+	order: number;
 	status: Status = $derived.by(() => {
 		if (this.duration === 0) {
 			return Status.RUNNING;
@@ -18,9 +35,11 @@ export class SubTest {
 	});
 	duration: number = $state(0);
 	errors: { message: string }[] | null = $state(null);
+	infos: TestInfo[] = $state([]);
 
-	constructor(name: string) {
+	constructor(name: string, order: number) {
 		this.name = name;
+		this.order = order;
 	}
 }
 
@@ -36,6 +55,7 @@ export class File {
 		return Status.DONE;
 	});
 	subTests: SubTest[] = $state([]);
+	infos: TestInfo[] = $state([]);
 	duration: number = $state(0);
 
 	constructor(name: string) {
@@ -55,13 +75,16 @@ type EventSubTest = {
 	name: string;
 	runner: string;
 	errors: { message: string }[] | null;
+	infos: TestInfo[] | null;
 	duration: number;
+	order?: number;
 };
 
 type EventFile = {
 	name: string;
 	duration: number;
 	subTests: EventSubTest[] | null;
+	infos: TestInfo[] | null;
 };
 
 type InitEvent = {
@@ -89,12 +112,30 @@ type EndEvent = {
 	data: EventFile;
 };
 
-type Event = InitEvent | StartEvent | StartTestEvent | EndTestEvent | EndEvent;
+type InfoEvent = {
+	type: "info";
+	data: EventSubTest;
+};
+
+type FileInfoEvent = {
+	type: "file_info";
+	data: EventFile;
+};
+
+type Event =
+	| InitEvent
+	| StartEvent
+	| StartTestEvent
+	| EndTestEvent
+	| EndEvent
+	| InfoEvent
+	| FileInfoEvent;
 
 function createSubTest(subTest: EventSubTest): SubTest {
-	const newSubTest = new SubTest(subTest.name);
+	const newSubTest = new SubTest(subTest.name, subTest.order ?? 0);
 	newSubTest.duration = subTest.duration;
 	newSubTest.errors = subTest.errors;
+	newSubTest.infos = subTest.infos ?? [];
 	return newSubTest;
 }
 
@@ -103,6 +144,7 @@ function createFile(file: EventFile): File {
 	if (file.subTests) {
 		newFile.subTests = file.subTests.map(createSubTest);
 	}
+	newFile.infos = file.infos ?? [];
 	newFile.duration = file.duration;
 	return newFile;
 }
@@ -152,6 +194,7 @@ class Watcher {
 				const existing = this.files.find((file) => file.name === data.data.name);
 				if (existing) {
 					existing.duration = data.data.duration;
+					existing.infos = data.data.infos ?? [];
 				} else {
 					const file = createFile(data.data);
 					this.files.push(file);
@@ -159,6 +202,14 @@ class Watcher {
 
 				break;
 			}
+			case "file_info": {
+				const existing = this.files.find((file) => file.name === data.data.name);
+				if (existing) {
+					existing.infos = data.data.infos ?? [];
+				}
+				break;
+			}
+			case "info":
 			case "end_test":
 			case "start_test": {
 				const file = this.files.find((file) => file.name === data.data.filename);
@@ -172,6 +223,7 @@ class Watcher {
 				if (existingSubTest) {
 					existingSubTest.duration = data.data.duration;
 					existingSubTest.errors = data.data.errors;
+					existingSubTest.infos = data.data.infos ?? [];
 				} else {
 					const subTest = createSubTest(data.data);
 					file.subTests.push(subTest);

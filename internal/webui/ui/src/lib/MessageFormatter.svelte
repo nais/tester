@@ -39,7 +39,6 @@
 		font-family: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Code", monospace;
 		font-size: 0.8125rem;
 		line-height: 1.6;
-		tab-size: 4;
 		overflow-x: auto;
 	}
 

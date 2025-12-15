@@ -58,3 +58,12 @@ func (r *JSONReporter) Error(msg string, args ...any) {
 		"runner": r.runner,
 	})
 }
+
+func (r *JSONReporter) Info(info reporter.Info) {
+	_ = r.w.Encode(map[string]any{
+		"info":   info,
+		"file":   r.file,
+		"name":   r.name,
+		"runner": r.runner,
+	})
+}

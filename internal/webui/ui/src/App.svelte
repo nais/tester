@@ -1,10 +1,82 @@
 <script lang="ts">
 	import FileButton from "./lib/FileButton.svelte";
+	import { formatNanoseconds } from "./lib/format";
+	import InfoCard from "./lib/InfoCard.svelte";
+	import InfoRow from "./lib/InfoRow.svelte";
 	import MessageFormatter from "./lib/MessageFormatter.svelte";
-	import { active, watcher } from "./lib/watcher.svelte";
+	import { active, Status, watcher, type SubTest, type TestInfo } from "./lib/watcher.svelte";
+
+	const STORAGE_KEY = "tester-panel-widths";
+	const DEFAULT_FILES_WIDTH = 280;
+	const DEFAULT_TESTS_WIDTH = 280;
+	const MIN_WIDTH = 150;
+	const MAX_WIDTH = 500;
 
 	let fileFilter = $state("");
 	let testFilter = $state("");
+
+	// Load saved widths from localStorage
+	function loadWidths(): { filesWidth: number; testsWidth: number } {
+		try {
+			const saved = localStorage.getItem(STORAGE_KEY);
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				return {
+					filesWidth: Math.max(
+						MIN_WIDTH,
+						Math.min(MAX_WIDTH, parsed.filesWidth ?? DEFAULT_FILES_WIDTH),
+					),
+					testsWidth: Math.max(
+						MIN_WIDTH,
+						Math.min(MAX_WIDTH, parsed.testsWidth ?? DEFAULT_TESTS_WIDTH),
+					),
+				};
+			}
+		} catch {
+			// Ignore parse errors
+		}
+		return { filesWidth: DEFAULT_FILES_WIDTH, testsWidth: DEFAULT_TESTS_WIDTH };
+	}
+
+	function saveWidths(filesWidth: number, testsWidth: number) {
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ filesWidth, testsWidth }));
+		} catch {
+			// Ignore storage errors
+		}
+	}
+
+	const initialWidths = loadWidths();
+	let filesWidth = $state(initialWidths.filesWidth);
+	let testsWidth = $state(initialWidths.testsWidth);
+
+	let dragging: "files" | "tests" | null = $state(null);
+
+	function handleMouseDown(panel: "files" | "tests") {
+		return (e: MouseEvent) => {
+			e.preventDefault();
+			dragging = panel;
+		};
+	}
+
+	function handleMouseMove(e: MouseEvent) {
+		if (!dragging) return;
+
+		if (dragging === "files") {
+			const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, e.clientX));
+			filesWidth = newWidth;
+		} else if (dragging === "tests") {
+			const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, e.clientX - filesWidth));
+			testsWidth = newWidth;
+		}
+	}
+
+	function handleMouseUp() {
+		if (dragging) {
+			saveWidths(filesWidth, testsWidth);
+			dragging = null;
+		}
+	}
 
 	const files = $derived(
 		watcher.files
@@ -15,11 +87,39 @@
 	const tests = $derived(
 		active.file?.subTests
 			.filter((f) => (testFilter ? f.name.includes(testFilter) : true))
-			.sort((a, b) => a.name.localeCompare(b.name)),
+			.sort((a, b) => a.order - b.order),
 	);
+
+	// Combined file items (infos + tests) sorted by execution order
+	type FileItem = { kind: "info"; data: TestInfo } | { kind: "test"; data: SubTest };
+
+	const fileItems = $derived.by((): FileItem[] => {
+		if (!active.file) return [];
+		const infos: FileItem[] = (active.file.infos ?? []).map((info) => ({
+			kind: "info",
+			data: info,
+		}));
+		const tests: FileItem[] = (active.file.subTests ?? []).map((test) => ({
+			kind: "test",
+			data: test,
+		}));
+		return [...infos, ...tests].sort((a, b) => a.data.order - b.data.order);
+	});
+
+	// File summary stats
+	const fileSummary = $derived.by(() => {
+		if (!active.file) return null;
+		const allTests = active.file.subTests;
+		const passed = allTests.filter((t) => t.status === Status.DONE).length;
+		const failed = allTests.filter((t) => t.status === Status.ERROR).length;
+		const running = allTests.filter((t) => t.status === Status.RUNNING).length;
+		return { total: allTests.length, passed, failed, running };
+	});
 </script>
 
-<div id="wrapper">
+<svelte:window onmousemove={handleMouseMove} onmouseup={handleMouseUp} />
+
+<div id="wrapper" style:--files-width="{filesWidth}px" style:--tests-width="{testsWidth}px">
 	<aside class="panel">
 		<header>
 			<h2>Files</h2>
@@ -40,6 +140,15 @@
 				<p class="empty">No files found</p>
 			{/each}
 		</div>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="resize-handle"
+			class:active={dragging === "files"}
+			onmousedown={handleMouseDown("files")}
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize files panel"
+		></div>
 	</aside>
 
 	<aside class="panel">
@@ -72,6 +181,15 @@
 				{/each}
 			{/if}
 		</div>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="resize-handle"
+			class:active={dragging === "tests"}
+			onmousedown={handleMouseDown("tests")}
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize tests panel"
+		></div>
 	</aside>
 
 	<main class="panel">
@@ -79,29 +197,109 @@
 			<h2>Output</h2>
 			{#if active.test}
 				<span class="test-name">{active.test.name}</span>
+			{:else if active.file}
+				<span class="test-name">{active.file.name}</span>
 			{/if}
 		</header>
 		<div class="content">
-			{#if !active.test}
-				<p class="empty">Select a test to view output</p>
-			{:else if active.test.errors && active.test.errors.length > 0}
-				{#each active.test.errors as { message }, i (i)}
-					<MessageFormatter {message} />
-				{/each}
-			{:else}
-				<div class="success">
-					<span class="success-icon">✓</span>
-					<p>Test passed with no errors</p>
+			{#if !active.file}
+				<p class="empty">Select a file to view tests</p>
+			{:else if !active.test}
+				<!-- File Summary View -->
+				<div class="file-summary">
+					<div class="summary-header">
+						<h3>{active.file.name}</h3>
+						<span class="duration">{formatNanoseconds(active.file.duration)}</span>
+					</div>
+
+					{#if fileSummary}
+						<div class="summary-stats">
+							<div class="stat">
+								<span class="stat-value">{fileSummary.total}</span>
+								<span class="stat-label">Total</span>
+							</div>
+							<div class="stat stat-passed">
+								<span class="stat-value">{fileSummary.passed}</span>
+								<span class="stat-label">Passed</span>
+							</div>
+							<div class="stat stat-failed">
+								<span class="stat-value">{fileSummary.failed}</span>
+								<span class="stat-label">Failed</span>
+							</div>
+							{#if fileSummary.running > 0}
+								<div class="stat stat-running">
+									<span class="stat-value">{fileSummary.running}</span>
+									<span class="stat-label">Running</span>
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<div class="test-list">
+						{#each fileItems as item (item.kind + "-" + item.data.order)}
+							{#if item.kind === "info"}
+								<InfoRow info={item.data} />
+							{:else}
+								<button
+									class="test-row"
+									class:error={item.data.status === Status.ERROR}
+									class:success={item.data.status === Status.DONE}
+									class:running={item.data.status === Status.RUNNING}
+									onclick={() => (active.test = item.data)}
+								>
+									<span class="status-icon">
+										{#if item.data.status === Status.ERROR}✕{:else if item.data.status === Status.DONE}✓{:else if item.data.status === Status.RUNNING}●{:else}○{/if}
+									</span>
+									<span class="test-name">{item.data.name}</span>
+									{#if item.data.errors && item.data.errors.length > 0}
+										<span class="error-badge">{item.data.errors.length}</span>
+									{/if}
+									<span class="test-duration">
+										{#if item.data.status === Status.RUNNING}running...{:else}{formatNanoseconds(
+												item.data.duration,
+											)}{/if}
+									</span>
+								</button>
+							{/if}
+						{/each}
+					</div>
 				</div>
+			{:else}
+				{#if active.test.errors && active.test.errors.length > 0}
+					<section class="output-section">
+						<h3 class="section-title error-title">Errors</h3>
+						{#each active.test.errors as { message }, i (i)}
+							<MessageFormatter {message} />
+						{/each}
+					</section>
+				{:else}
+					<div class="success">
+						<span class="success-icon">✓</span>
+						<p>Test passed with no errors</p>
+					</div>
+				{/if}
+
+				{#if active.test.infos && active.test.infos.length > 0}
+					<section class="output-section">
+						<h3 class="section-title">Execution Log</h3>
+						{#each active.test.infos as info, i (i)}
+							<InfoCard {info} />
+						{/each}
+					</section>
+				{/if}
 			{/if}
 		</div>
 	</main>
 </div>
 
+{#if dragging}
+	<div class="drag-overlay"></div>
+{/if}
+
 <style>
 	#wrapper {
 		display: grid;
-		grid-template-columns: 280px 280px 1fr;
+		grid-template-columns: var(--files-width) var(--tests-width) 1fr;
 		height: 100vh;
 		overflow: hidden;
 	}
@@ -111,10 +309,35 @@
 		flex-direction: column;
 		border-right: 1px solid var(--color-border);
 		overflow: hidden;
+		position: relative;
 	}
 
 	.panel:last-child {
 		border-right: none;
+	}
+
+	.resize-handle {
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 4px;
+		height: 100%;
+		cursor: col-resize;
+		background: transparent;
+		transition: background-color 0.15s ease;
+		z-index: 10;
+	}
+
+	.resize-handle:hover,
+	.resize-handle.active {
+		background: var(--color-running);
+	}
+
+	.drag-overlay {
+		position: fixed;
+		inset: 0;
+		cursor: col-resize;
+		z-index: 100;
 	}
 
 	header {
@@ -221,5 +444,170 @@
 
 	.success p {
 		color: var(--color-text-muted);
+	}
+
+	.output-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.section-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-muted);
+		margin-bottom: 0.25rem;
+	}
+
+	.error-title {
+		color: var(--color-error);
+	}
+
+	/* File Summary Styles */
+	.file-summary {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.summary-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.summary-header h3 {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.summary-header .duration {
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+	}
+
+	.summary-stats {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.stat {
+		flex: 1;
+		padding: 1rem;
+		background: var(--color-bg-elevated);
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border);
+		text-align: center;
+	}
+
+	.stat-value {
+		display: block;
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+
+	.stat-label {
+		display: block;
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.stat-passed .stat-value {
+		color: var(--color-success);
+	}
+
+	.stat-failed .stat-value {
+		color: var(--color-error);
+	}
+
+	.stat-running .stat-value {
+		color: var(--color-running);
+	}
+
+	.test-list {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.test-row {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		background: none;
+		border: none;
+		border-bottom: 1px solid var(--color-border);
+		cursor: pointer;
+		text-align: left;
+		font-size: 0.8125rem;
+		color: var(--color-text);
+		width: 100%;
+	}
+
+	.test-row:hover {
+		background: var(--color-bg-hover);
+	}
+
+	.test-row .status-icon {
+		width: 1rem;
+		font-weight: bold;
+		font-size: 0.75rem;
+		flex-shrink: 0;
+	}
+
+	.test-row.success .status-icon {
+		color: var(--color-success);
+	}
+
+	.test-row.error .status-icon {
+		color: var(--color-error);
+	}
+
+	.test-row.running .status-icon {
+		color: var(--color-running);
+		animation: pulse 2s infinite;
+	}
+
+	.test-row .test-name {
+		flex: 1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.test-row .error-badge {
+		font-size: 0.625rem;
+		padding: 0.125rem 0.375rem;
+		background: var(--color-error);
+		color: var(--color-bg);
+		border-radius: 3px;
+		font-weight: 600;
+		flex-shrink: 0;
+	}
+
+	.test-row .test-duration {
+		color: var(--color-text-muted);
+		font-size: 0.75rem;
+		flex-shrink: 0;
+	}
+
+	@keyframes pulse {
+		0% {
+			opacity: 0.5;
+		}
+		50% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0.5;
+		}
 	}
 </style>

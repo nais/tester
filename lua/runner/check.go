@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -18,6 +19,7 @@ type (
 
 const (
 	ctxSaveFunc contextKey = iota
+	ctxReporter
 )
 
 const (
@@ -32,6 +34,32 @@ type Reporter interface {
 
 func WithSaveFunc(ctx context.Context, fn SaveFunc) context.Context {
 	return context.WithValue(ctx, ctxSaveFunc, fn)
+}
+
+func WithReporter(ctx context.Context, r reporter.Reporter) context.Context {
+	return context.WithValue(ctx, ctxReporter, r)
+}
+
+func GetReporter(ctx context.Context) reporter.Reporter {
+	r, _ := ctx.Value(ctxReporter).(reporter.Reporter)
+	return r
+}
+
+// Info logs information about test execution if a reporter is available.
+// It automatically applies Dedent to the Content field and all Args values
+// to remove common leading whitespace from multi-line strings.
+func Info(ctx context.Context, info reporter.Info) {
+	if r := GetReporter(ctx); r != nil {
+		// Dedent the content
+		info.Content = Dedent(info.Content)
+
+		// Dedent all argument values
+		for i := range info.Args {
+			info.Args[i].Value = Dedent(info.Args[i].Value)
+		}
+
+		r.Info(info)
+	}
 }
 
 func StdCheck(L *lua.LState, tbl *lua.LTable, b any) {
