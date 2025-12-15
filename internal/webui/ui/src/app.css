@@ -1,16 +1,16 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+	color-scheme: dark;
+	color: rgba(255, 255, 255, 0.87);
+	background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 /*
 RESET from https://www.joshwcomeau.com/css/custom-css-reset/
@@ -20,17 +20,17 @@ RESET from https://www.joshwcomeau.com/css/custom-css-reset/
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 /* 2. Remove default margin */
 * {
-  margin: 0;
+	margin: 0;
 }
 body {
-  /* 3. Add accessible line-height */
-  line-height: 1.5;
-  /* 4. Improve text rendering */
-  -webkit-font-smoothing: antialiased;
+	/* 3. Add accessible line-height */
+	line-height: 1.5;
+	/* 4. Improve text rendering */
+	-webkit-font-smoothing: antialiased;
 }
 /* 5. Improve media defaults */
 img,
@@ -38,15 +38,15 @@ picture,
 video,
 canvas,
 svg {
-  display: block;
-  max-width: 100%;
+	display: block;
+	max-width: 100%;
 }
 /* 6. Inherit fonts for form controls */
 input,
 button,
 textarea,
 select {
-  font: inherit;
+	font: inherit;
 }
 /* 7. Avoid text overflows */
 p,
@@ -56,11 +56,11 @@ h3,
 h4,
 h5,
 h6 {
-  overflow-wrap: break-word;
+	overflow-wrap: break-word;
 }
 /* 8. Improve line wrapping */
 p {
-  text-wrap: pretty;
+	text-wrap: pretty;
 }
 h1,
 h2,
@@ -68,18 +68,18 @@ h3,
 h4,
 h5,
 h6 {
-  text-wrap: balance;
+	text-wrap: balance;
 }
 /*
   9. Create a root stacking context
 */
 #root,
 #__next {
-  isolation: isolate;
+	isolation: isolate;
 }
 
 #app {
-  display: contents;
+	display: contents;
 }
 /*
 @media (prefers-color-scheme: light) {
