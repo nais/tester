@@ -18,9 +18,11 @@
 
 <button onclick={() => onselect(file.name)} class:active>
 	<span
+		class="icon"
 		class:error={file.status === Status.ERROR}
 		class:done={file.status === Status.DONE}
 		class:running={file.status === Status.RUNNING}
+		class:skip={file.status === Status.SKIP}
 	>
 		{#if file.status === Status.RUNNING}
 			<Record />
@@ -32,10 +34,10 @@
 			<Check />
 		{/if}
 	</span>
-	{file.name}
+	<span class="name">{file.name}</span>
 	<span class="duration">
 		{#if file.status === Status.RUNNING}
-			running...
+			running
 		{:else}
 			{formatNanoseconds(file.duration)}
 		{/if}
@@ -44,55 +46,75 @@
 
 <style>
 	button {
-		font-size: 0.9rem;
-		background-color: transparent;
-		border: none;
-		text-align: left;
 		display: flex;
-		justify-content: flex-start;
 		align-items: center;
 		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		background: transparent;
+		border: none;
+		border-radius: var(--radius-sm);
+		color: var(--color-text);
+		font-size: 0.8125rem;
+		text-align: left;
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			color 0.15s ease;
+	}
 
-		> * {
-			flex-shrink: 1;
-		}
+	button:hover {
+		background: var(--color-bg-hover);
+	}
 
-		&:hover {
-			text-decoration: underline;
-			cursor: pointer;
-		}
+	button.active {
+		background: var(--color-bg-active);
+	}
 
-		&.active {
-			background-color: #670f8a;
-		}
+	.icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 
 	.error {
-		color: rgb(209, 44, 44);
+		color: var(--color-error);
 	}
 
 	.done {
-		color: rgb(10, 243, 10);
+		color: var(--color-success);
 	}
 
-	.duration {
-		margin-left: auto;
-		opacity: 0.5;
+	.skip {
+		color: var(--color-skip);
 	}
 
 	.running {
-		color: rgb(255, 255, 255);
-		animation: pulse 2s infinite;
+		color: var(--color-running);
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.name {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.duration {
+		flex-shrink: 0;
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	@keyframes pulse {
-		0% {
-			opacity: 0.5;
-		}
-		50% {
+		0%,
+		100% {
 			opacity: 1;
 		}
-		100% {
+		50% {
 			opacity: 0.5;
 		}
 	}

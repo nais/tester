@@ -1,17 +1,32 @@
 :root {
+	--color-bg: #1a1a1a;
+	--color-bg-elevated: #242424;
+	--color-bg-hover: #2e2e2e;
+	--color-bg-active: #3a3a3a;
+	--color-border: #3a3a3a;
+	--color-text: rgba(255, 255, 255, 0.9);
+	--color-text-muted: rgba(255, 255, 255, 0.5);
+	--color-success: #4ade80;
+	--color-error: #f87171;
+	--color-running: #60a5fa;
+	--color-skip: #a78bfa;
+	--radius-sm: 4px;
+	--radius-md: 8px;
+
 	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 	line-height: 1.5;
 	font-weight: 400;
 
 	color-scheme: dark;
-	color: rgba(255, 255, 255, 0.87);
-	background-color: #242424;
+	color: var(--color-text);
+	background-color: var(--color-bg);
 
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
+
 /*
 RESET from https://www.joshwcomeau.com/css/custom-css-reset/
 */
@@ -25,6 +40,10 @@ RESET from https://www.joshwcomeau.com/css/custom-css-reset/
 /* 2. Remove default margin */
 * {
 	margin: 0;
+}
+html,
+body {
+	height: 100%;
 }
 body {
 	/* 3. Add accessible line-height */
@@ -81,16 +100,31 @@ h6 {
 #app {
 	display: contents;
 }
-/*
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+
+/* Custom scrollbar styling */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--color-border);
+	border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--color-text-muted);
+}
+
+*::-webkit-scrollbar-corner {
+	background: transparent;
+}
