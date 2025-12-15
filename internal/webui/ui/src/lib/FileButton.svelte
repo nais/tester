@@ -8,25 +8,25 @@
 	let {
 		file,
 		active,
-		onclick,
+		onselect,
 	}: {
 		file: { name: string; status: Status; duration: number };
 		active: boolean;
-		onclick: (name: string) => void;
+		onselect: (name: string) => void;
 	} = $props();
 </script>
 
-<button onclick={() => onclick(file.name)} class:active>
+<button onclick={() => onselect(file.name)} class:active>
 	<span
-		class:error={file.status == Status.ERROR}
-		class:done={file.status == Status.DONE}
-		class:running={file.status == Status.RUNNING}
+		class:error={file.status === Status.ERROR}
+		class:done={file.status === Status.DONE}
+		class:running={file.status === Status.RUNNING}
 	>
-		{#if file.status == Status.RUNNING}
+		{#if file.status === Status.RUNNING}
 			<Record />
-		{:else if file.status == Status.ERROR}
+		{:else if file.status === Status.ERROR}
 			<Error />
-		{:else if file.status == Status.SKIP}
+		{:else if file.status === Status.SKIP}
 			<Skip />
 		{:else}
 			<Check />
@@ -34,7 +34,7 @@
 	</span>
 	{file.name}
 	<span class="duration">
-		{#if file.status == Status.RUNNING}
+		{#if file.status === Status.RUNNING}
 			running...
 		{:else}
 			{formatNanoseconds(file.duration)}

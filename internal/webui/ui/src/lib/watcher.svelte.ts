@@ -84,11 +84,6 @@ type EndTestEvent = {
 	data: EventSubTest;
 };
 
-type ErrorEvent = {
-	type: "error";
-	data: EventSubTest;
-};
-
 type EndEvent = {
 	type: "end";
 	data: EventFile;
@@ -105,9 +100,7 @@ function createSubTest(subTest: EventSubTest): SubTest {
 
 function createFile(file: EventFile): File {
 	const newFile = new File(file.name);
-	// newFile.status = $state(Status.DONE);
 	if (file.subTests) {
-		console.log("HAS", file.subTests);
 		newFile.subTests = file.subTests.map(createSubTest);
 	}
 	newFile.duration = file.duration;
@@ -122,6 +115,11 @@ class Watcher {
 		this.#newEventSource();
 	}
 
+	destroy() {
+		this.#eventSource?.close();
+		this.#eventSource = undefined;
+	}
+
 	#newEventSource() {
 		this.#eventSource?.close();
 		this.#eventSource = new EventSource("/events");
@@ -130,14 +128,19 @@ class Watcher {
 	}
 
 	#handleError() {
-		const t = this;
 		setTimeout(() => {
-			t.#newEventSource();
+			this.#newEventSource();
 		}, 1000);
 	}
 
 	#handleMessage(event: MessageEvent) {
-		const data = JSON.parse(event.data) as Event;
+		let data: Event;
+		try {
+			data = JSON.parse(event.data) as Event;
+		} catch {
+			console.error("Failed to parse event data:", event.data);
+			return;
+		}
 		switch (data.type) {
 			case "init":
 				this.files = Object.values(data.data)
@@ -149,15 +152,9 @@ class Watcher {
 				const existing = this.files.find((file) => file.name === data.data.name);
 				if (existing) {
 					existing.duration = data.data.duration;
-					// existing.subTests = existing.subTests.map((subTest) => {
-					//   subTest.duration = 0;
-					//   subTest.errors = null;
-					//   return subTest;
-					// });
 				} else {
 					const file = createFile(data.data);
 					this.files.push(file);
-					console.log("NEW FILE", file);
 				}
 
 				break;
@@ -167,7 +164,6 @@ class Watcher {
 				const file = this.files.find((file) => file.name === data.data.filename);
 
 				if (!file) {
-					console.log("NO FILE", data.data.filename);
 					return;
 				}
 
@@ -182,29 +178,6 @@ class Watcher {
 				}
 				break;
 			}
-
-			// Ignore these events for now
-			// case "error":
-			//   break;
-			// case "start_test":
-			// case "end_test":
-			//   const file = this.files.find(
-			//     (file) => file.name === data.data.filename
-			//   );
-			//   if (file) {
-			//     const existing = file.subTests.find(
-			//       (subTest) => subTest.name === data.data.name
-			//     );
-
-			//     if (existing) {
-			//       existing.duration = data.data.duration;
-			//       existing.errors = data.data.errors;
-			//     } else {
-			//       const subTest = createSubTest(data.data);
-			//       file.subTests.push(subTest);
-			//     }
-			//   }
-			//   break;
 		}
 	}
 }

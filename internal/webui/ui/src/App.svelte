@@ -6,30 +6,30 @@
 	let fileFilter = $state("");
 	let testFilter = $state("");
 
-	const files = $derived.by(() => {
-		return watcher.files
+	const files = $derived(
+		watcher.files
 			.filter((f) => (fileFilter ? f.name.includes(fileFilter) : true))
-			.sort((a, b) => (a.status == b.status ? a.name.localeCompare(b.name) : b.status - a.status));
-	});
+			.sort((a, b) => (a.status === b.status ? a.name.localeCompare(b.name) : b.status - a.status)),
+	);
 
-	const tests = $derived.by(() => {
-		return active.file?.subTests
+	const tests = $derived(
+		active.file?.subTests
 			.filter((f) => (testFilter ? f.name.includes(testFilter) : true))
-			.sort((a, b) => a.name.localeCompare(b.name));
-	});
+			.sort((a, b) => a.name.localeCompare(b.name)),
+	);
 </script>
 
 <div id="wrapper">
 	<section id="sidebar">
 		<input type="search" placeholder="Search files" bind:value={fileFilter} />
 
-		{#each files as file}
+		{#each files as file (file.name)}
 			<FileButton
 				{file}
-				onclick={(name) => {
-					active.file = watcher.files.find((f) => f.name == name);
+				onselect={(name) => {
+					active.file = watcher.files.find((f) => f.name === name);
 				}}
-				active={active.file?.name == file.name}
+				active={active.file?.name === file.name}
 			/>
 		{/each}
 	</section>
@@ -39,13 +39,13 @@
 		{#if !tests}
 			<p>Select a file</p>
 		{:else}
-			{#each tests as subTest}
+			{#each tests as subTest (subTest.name)}
 				<FileButton
 					file={subTest}
-					onclick={(name) => {
-						active.test = active.file?.subTests.find((f) => f.name == name);
+					onselect={(name) => {
+						active.test = active.file?.subTests.find((f) => f.name === name);
 					}}
-					active={active.test?.name == subTest.name}
+					active={active.test?.name === subTest.name}
 				/>
 			{/each}
 		{/if}
@@ -53,7 +53,7 @@
 
 	<main>
 		{#if active.test}
-			{#each active.test.errors || [] as { message }}
+			{#each active.test.errors || [] as { message }, i (i)}
 				<MessageFormatter {message} />
 			{:else}
 				<p>No errors</p>

@@ -15,7 +15,10 @@
 	const padZero = (num: number) => num.toString().padStart(maxLines.toString().length, "0");
 </script>
 
-<pre>{#each lines as { m, add, del, line }}<span class:add class:del data-line={padZero(line)}
+<pre>{#each lines as { m, add, del, line } (line)}<span
+			class:add
+			class:del
+			data-line={padZero(line)}
 			>{m}
 </span>{/each}</pre>
 
