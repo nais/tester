@@ -105,9 +105,10 @@ func (r *REST) send(L *lua.LState) int {
 		requestInfo += "\n\n" + bodyContent
 	}
 	Info(ctx, reporter.Info{
-		Type:    reporter.InfoTypeRequest,
-		Title:   "HTTP Request",
-		Content: requestInfo,
+		Type:     reporter.InfoTypeRequest,
+		Title:    "HTTP Request",
+		Content:  requestInfo,
+		Language: "text",
 	})
 
 	req, err := http.NewRequestWithContext(ctx, method, path, body)
@@ -120,9 +121,10 @@ func (r *REST) send(L *lua.LState) int {
 
 	// Log the response
 	Info(ctx, reporter.Info{
-		Type:    reporter.InfoTypeResponse,
-		Title:   fmt.Sprintf("HTTP Response (%d)", r.response.Code),
-		Content: r.response.Body.String(),
+		Type:     reporter.InfoTypeResponse,
+		Title:    fmt.Sprintf("HTTP Response (%d)", r.response.Code),
+		Content:  r.response.Body.String(),
+		Language: "json",
 	})
 
 	return 0

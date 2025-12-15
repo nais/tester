@@ -128,7 +128,7 @@ func (m *Manager) watch(ctx context.Context, dir string, report reporter.Reporte
 
 	go func() {
 		for err := range watcher.Errors {
-			report.Error("watcher error: %v", err)
+			report.ReportError(reporter.NewError("watcher error: %v", err))
 		}
 	}()
 

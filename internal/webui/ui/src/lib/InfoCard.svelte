@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CodeView from "./CodeView.svelte";
 	import { formatNanoseconds } from "./format";
 	import type { TestInfo } from "./watcher.svelte";
 
@@ -51,7 +52,11 @@
 			</table>
 		{/if}
 		{#if info.content}
-			<pre class="content">{info.content}</pre>
+			{#if info.language}
+				<CodeView code={info.content} lang={info.language} />
+			{:else}
+				<pre class="content">{info.language}{info.content}</pre>
+			{/if}
 		{/if}
 	</div>
 </div>

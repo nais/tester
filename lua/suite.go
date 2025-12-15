@@ -154,7 +154,7 @@ func (s *suite) run(ctx context.Context, filename string) {
 	}
 
 	if err := L.DoFile(filename); err != nil {
-		s.reporter.Error(err.Error())
+		s.reporter.ReportError(reporter.NewError("%s", err.Error()))
 	}
 }
 
@@ -199,7 +199,12 @@ func (s *suite) newTest(runnerName string, _ *lua.LState) lua.LGFunction {
 				Protect: true,
 			}, mod)
 			if err != nil {
-				r.Error(err.Error())
+				// Check if this was a CheckError with structured data
+				if checkErr, ok := runner.GetCheckError(L.Context()); ok {
+					r.ReportError(reporter.NewDiffError(checkErr.Diff, checkErr.Expected, checkErr.Actual))
+				} else {
+					r.ReportError(reporter.NewError("%s", err.Error()))
+				}
 			}
 		})
 

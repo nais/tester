@@ -18,10 +18,13 @@ type TestInfo struct {
 	Args      []reporter.InfoArg `json:"args,omitempty"`
 	Timestamp time.Duration      `json:"timestamp"`
 	Order     int                `json:"order"`
+	Langauge  string             `json:"language,omitempty"`
 }
 
 type TestError struct {
-	Message string `json:"message"`
+	Message  string `json:"message"`
+	Expected any    `json:"expected,omitempty"`
+	Actual   any    `json:"actual,omitempty"`
 }
 
 type Test struct {
@@ -64,17 +67,18 @@ func (t *Test) End() {
 	})
 }
 
-func (t *Test) AddError(msg string, args ...any) {
+func (t *Test) AddError(err *reporter.Error) {
 	if t == nil {
-		fmt.Printf(msg, args...)
-		fmt.Println()
+		fmt.Println(err.Message)
 		return
 	}
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	t.Errors = append(t.Errors, &TestError{
-		Message: msg,
+		Message:  err.Message,
+		Expected: err.Expected,
+		Actual:   err.Actual,
 	})
 
 	t.cache.Broadcast(&SSEMessage{
@@ -97,6 +101,7 @@ func (t *Test) AddInfo(info reporter.Info) {
 		Content:   info.Content,
 		Args:      info.Args,
 		Timestamp: time.Since(t.start),
+		Langauge:  info.Language,
 	})
 
 	t.cache.Broadcast(&SSEMessage{
@@ -176,6 +181,7 @@ func (f *File) AddInfo(info reporter.Info) {
 		Args:      info.Args,
 		Timestamp: time.Since(f.start),
 		Order:     f.itemOrder,
+		Langauge:  info.Language,
 	})
 	f.itemOrder++
 
@@ -291,8 +297,8 @@ func (r *SSEReporter) RunTest(ctx context.Context, runner, name string, fn func(
 	test.End()
 }
 
-func (r *SSEReporter) Error(msg string, args ...any) {
-	r.test.AddError(msg, args...)
+func (r *SSEReporter) ReportError(err *reporter.Error) {
+	r.test.AddError(err)
 }
 
 func (r *SSEReporter) Info(info reporter.Info) {

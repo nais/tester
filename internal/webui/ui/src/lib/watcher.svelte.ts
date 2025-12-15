@@ -1,3 +1,5 @@
+import type { SupportedLanguages } from "./highlighter";
+
 export enum Status {
 	"RUNNING",
 	"DONE",
@@ -19,6 +21,13 @@ export interface TestInfo {
 	args?: InfoArg[];
 	timestamp: number;
 	order: number;
+	language?: SupportedLanguages;
+}
+
+export interface TestError {
+	message: string;
+	expected?: unknown;
+	actual?: unknown;
 }
 
 export class SubTest {
@@ -34,7 +43,7 @@ export class SubTest {
 		return Status.DONE;
 	});
 	duration: number = $state(0);
-	errors: { message: string }[] | null = $state(null);
+	errors: TestError[] | null = $state(null);
 	infos: TestInfo[] = $state([]);
 
 	constructor(name: string, order: number) {
@@ -74,7 +83,7 @@ type EventSubTest = {
 	filename: string;
 	name: string;
 	runner: string;
-	errors: { message: string }[] | null;
+	errors: TestError[] | null;
 	infos: TestInfo[] | null;
 	duration: number;
 	order?: number;

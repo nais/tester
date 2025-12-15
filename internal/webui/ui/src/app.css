@@ -137,3 +137,7 @@ h6 {
 *::-webkit-scrollbar-corner {
 	background: transparent;
 }
+
+.shiki {
+	padding: 1rem;
+}

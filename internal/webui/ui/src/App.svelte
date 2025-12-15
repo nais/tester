@@ -268,8 +268,8 @@
 				{#if active.test.errors && active.test.errors.length > 0}
 					<section class="output-section">
 						<h3 class="section-title error-title">Errors</h3>
-						{#each active.test.errors as { message }, i (i)}
-							<MessageFormatter {message} />
+						{#each active.test.errors as error, i (i)}
+							<MessageFormatter {error} />
 						{/each}
 					</section>
 				{:else}

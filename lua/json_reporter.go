@@ -3,7 +3,6 @@ package lua
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/nais/tester/lua/reporter"
@@ -50,12 +49,14 @@ func (r *JSONReporter) RunTest(ctx context.Context, runner, name string, fn func
 	})
 }
 
-func (r *JSONReporter) Error(msg string, args ...any) {
+func (r *JSONReporter) ReportError(err *reporter.Error) {
 	_ = r.w.Encode(map[string]any{
-		"error":  fmt.Sprintf(msg, args...),
-		"file":   r.file,
-		"name":   r.name,
-		"runner": r.runner,
+		"error":    err.Message,
+		"expected": err.Expected,
+		"actual":   err.Actual,
+		"file":     r.file,
+		"name":     r.name,
+		"runner":   r.runner,
 	})
 }
 

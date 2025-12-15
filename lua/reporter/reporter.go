@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -9,6 +10,33 @@ import (
 type InfoArg struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value"`
+}
+
+// Error represents a structured error with optional expected/actual values for diffs
+type Error struct {
+	Message  string `json:"message"`
+	Expected any    `json:"expected,omitempty"`
+	Actual   any    `json:"actual,omitempty"`
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
+// NewError creates a simple error with just a message
+func NewError(msg string, args ...any) *Error {
+	return &Error{
+		Message: fmt.Sprintf(msg, args...),
+	}
+}
+
+// NewDiffError creates an error with expected and actual values for diff display
+func NewDiffError(diff string, expected, actual any) *Error {
+	return &Error{
+		Message:  fmt.Sprintf("diff -want +got:\n%v", diff),
+		Expected: expected,
+		Actual:   actual,
+	}
 }
 
 // InfoType represents the type of information being reported
@@ -34,11 +62,12 @@ type Info struct {
 	Content   string        `json:"content"`
 	Args      []InfoArg     `json:"args,omitempty"`
 	Timestamp time.Duration `json:"timestamp"`
+	Language  string        `json:"language,omitempty"`
 }
 
 type Reporter interface {
 	RunFile(ctx context.Context, filename string, fn func(Reporter))
 	RunTest(ctx context.Context, runner, name string, fn func(Reporter))
-	Error(msg string, args ...any)
+	ReportError(err *Error)
 	Info(info Info)
 }

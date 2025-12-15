@@ -122,9 +122,10 @@ func (s *SQL) query(L *lua.LState) int {
 
 	// Log the query
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeQuery,
-		Title:   "SQL Query",
-		Content: query,
+		Type:     reporter.InfoTypeQuery,
+		Title:    "SQL Query",
+		Content:  query,
+		Language: "sql",
 	})
 
 	res := s.doQuery(L)
@@ -139,9 +140,10 @@ func (s *SQL) query(L *lua.LState) int {
 	// Log the result
 	resultJSON, _ := json.MarshalIndent(s.results, "", "\t")
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeResult,
-		Title:   fmt.Sprintf("SQL Result (%d rows)", len(res)),
-		Content: string(resultJSON),
+		Type:     reporter.InfoTypeResult,
+		Title:    fmt.Sprintf("SQL Result (%d rows)", len(res)),
+		Content:  string(resultJSON),
+		Language: "json",
 	})
 
 	return 0
@@ -152,9 +154,10 @@ func (s *SQL) queryRow(L *lua.LState) int {
 
 	// Log the query
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeQuery,
-		Title:   "SQL QueryRow",
-		Content: query,
+		Type:     reporter.InfoTypeQuery,
+		Title:    "SQL QueryRow",
+		Content:  query,
+		Language: "sql",
 	})
 
 	s.results = s.doQueryRow(L)
@@ -162,9 +165,10 @@ func (s *SQL) queryRow(L *lua.LState) int {
 	// Log the result
 	resultJSON, _ := json.MarshalIndent(s.results, "", "\t")
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeResult,
-		Title:   "SQL Result (1 row)",
-		Content: string(resultJSON),
+		Type:     reporter.InfoTypeResult,
+		Title:    "SQL Result (1 row)",
+		Content:  string(resultJSON),
+		Language: "json",
 	})
 
 	return 0

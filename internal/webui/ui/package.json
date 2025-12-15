@@ -31,5 +31,8 @@
 		"typescript": "~5.9.3",
 		"typescript-eslint": "^8.49.0",
 		"vite": "^7.3.0"
+	},
+	"dependencies": {
+		"shiki": "^3.20.0"
 	}
 }

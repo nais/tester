@@ -29,8 +29,8 @@ func (r *TestReporter) RunTest(ctx context.Context, runner string, name string, 
 	})
 }
 
-func (r *TestReporter) Error(msg string, args ...any) {
-	r.t.Errorf(msg, args...)
+func (r *TestReporter) ReportError(err *reporter.Error) {
+	r.t.Errorf("%s", err.Message)
 }
 
 func (r *TestReporter) Info(info reporter.Info) {

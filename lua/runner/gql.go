@@ -96,9 +96,10 @@ func (g *GQL) query(L *lua.LState) int {
 
 	// Log the query
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeQuery,
-		Title:   "GraphQL Query",
-		Content: query,
+		Type:     reporter.InfoTypeQuery,
+		Title:    "GraphQL Query",
+		Content:  query,
+		Language: "graphql",
 	})
 
 	req, err := http.NewRequestWithContext(L.Context(), "POST", "/", bytes.NewReader(b))
@@ -126,9 +127,10 @@ func (g *GQL) query(L *lua.LState) int {
 	// Log the response
 	responseJSON, _ := json.MarshalIndent(g.results, "", "\t")
 	Info(L.Context(), reporter.Info{
-		Type:    reporter.InfoTypeResponse,
-		Title:   "GraphQL Response",
-		Content: string(responseJSON),
+		Type:     reporter.InfoTypeResponse,
+		Title:    "GraphQL Response",
+		Content:  string(responseJSON),
+		Language: "json",
 	})
 
 	return 0
