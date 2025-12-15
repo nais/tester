@@ -84,7 +84,7 @@ Test.gql("test users", function(t)
 end)
 
 Test.gql("test user", function(t)
-  t.query(string.format([[{ usuer(id: "%s") { ... } }]], State.user1))
+  t.query(string.format([[{ user(id: "%s") { ... } }]], State.user1))
   t.check { /* ... */ }
 end)
 ```

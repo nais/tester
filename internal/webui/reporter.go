@@ -148,9 +148,9 @@ func (c *sseCache) Broadcast(msg *SSEMessage) {
 
 func (c *sseCache) RemoveFile(name string) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	delete(c.files, name)
+	c.lock.Unlock()
+
 	c.Broadcast(&SSEMessage{
 		Type: "remove",
 		Data: name,
