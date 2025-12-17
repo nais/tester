@@ -195,9 +195,9 @@
 		<div class="search-box">
 			<div class="search-icon">
 				{#if searchMode === "files"}
-					:
+					Files
 				{:else if searchMode === "tests"}
-					@
+					Tests
 				{:else}
 					⌘
 				{/if}
@@ -343,7 +343,7 @@
 	.search-icon {
 		font-size: 1.25rem;
 		color: var(--color-text-muted);
-		width: 1.5rem;
+		width: 2.5rem;
 		height: 1.5rem;
 		display: flex;
 		align-items: center;
