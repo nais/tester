@@ -1,17 +1,41 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+* {
+	tab-size: 2;
 }
+
+:root {
+	--color-bg: #1a1a1a;
+	--color-bg-elevated: #242424;
+	--color-bg-hover: #2e2e2e;
+	--color-bg-active: #3a3a3a;
+	--color-border: #3a3a3a;
+	--color-text: rgba(255, 255, 255, 0.9);
+	--color-text-muted: rgba(255, 255, 255, 0.5);
+	--color-success: #4ade80;
+	--color-error: #f87171;
+	--color-running: #60a5fa;
+	--color-skip: #a78bfa;
+	--color-info-helper: #a78bfa;
+	--color-info-request: #60a5fa;
+	--color-info-response: #4ade80;
+	--color-info-query: #9ca3af;
+	--color-info-result: #34d399;
+	--radius-sm: 4px;
+	--radius-md: 8px;
+
+	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
+
+	color-scheme: dark;
+	color: var(--color-text);
+	background-color: var(--color-bg);
+
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
 /*
 RESET from https://www.joshwcomeau.com/css/custom-css-reset/
 */
@@ -20,17 +44,21 @@ RESET from https://www.joshwcomeau.com/css/custom-css-reset/
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 /* 2. Remove default margin */
 * {
-  margin: 0;
+	margin: 0;
+}
+html,
+body {
+	height: 100%;
 }
 body {
-  /* 3. Add accessible line-height */
-  line-height: 1.5;
-  /* 4. Improve text rendering */
-  -webkit-font-smoothing: antialiased;
+	/* 3. Add accessible line-height */
+	line-height: 1.5;
+	/* 4. Improve text rendering */
+	-webkit-font-smoothing: antialiased;
 }
 /* 5. Improve media defaults */
 img,
@@ -38,15 +66,15 @@ picture,
 video,
 canvas,
 svg {
-  display: block;
-  max-width: 100%;
+	display: block;
+	max-width: 100%;
 }
 /* 6. Inherit fonts for form controls */
 input,
 button,
 textarea,
 select {
-  font: inherit;
+	font: inherit;
 }
 /* 7. Avoid text overflows */
 p,
@@ -56,11 +84,11 @@ h3,
 h4,
 h5,
 h6 {
-  overflow-wrap: break-word;
+	overflow-wrap: break-word;
 }
 /* 8. Improve line wrapping */
 p {
-  text-wrap: pretty;
+	text-wrap: pretty;
 }
 h1,
 h2,
@@ -68,29 +96,48 @@ h3,
 h4,
 h5,
 h6 {
-  text-wrap: balance;
+	text-wrap: balance;
 }
 /*
   9. Create a root stacking context
 */
 #root,
 #__next {
-  isolation: isolate;
+	isolation: isolate;
 }
 
 #app {
-  display: contents;
+	display: contents;
 }
-/*
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+
+/* Custom scrollbar styling */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--color-border);
+	border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--color-text-muted);
+}
+
+*::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+.shiki {
+	padding: 1rem;
+}

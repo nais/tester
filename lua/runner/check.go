@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -18,6 +19,8 @@ type (
 
 const (
 	ctxSaveFunc contextKey = iota
+	ctxReporter
+	ctxCheckError
 )
 
 const (
@@ -34,8 +37,61 @@ func WithSaveFunc(ctx context.Context, fn SaveFunc) context.Context {
 	return context.WithValue(ctx, ctxSaveFunc, fn)
 }
 
+func WithReporter(ctx context.Context, r reporter.Reporter) context.Context {
+	return context.WithValue(ctx, ctxReporter, r)
+}
+
+func GetReporter(ctx context.Context) reporter.Reporter {
+	r, _ := ctx.Value(ctxReporter).(reporter.Reporter)
+	return r
+}
+
+// Info logs information about test execution if a reporter is available.
+// It automatically applies Dedent to the Content field and all Args values
+// to remove common leading whitespace from multi-line strings.
+func Info(ctx context.Context, info reporter.Info) {
+	if r := GetReporter(ctx); r != nil {
+		// Dedent the content
+		info.Content = Dedent(info.Content)
+
+		// Dedent all argument values
+		for i := range info.Args {
+			info.Args[i].Value = Dedent(info.Args[i].Value)
+		}
+
+		r.Info(info)
+	}
+}
+
+// CheckError is a structured error type that holds the diff message
+// along with the original expected and actual values for copying.
+type CheckError struct {
+	Diff     string
+	Expected any
+	Actual   any
+}
+
+func (e *CheckError) Error() string {
+	return fmt.Sprintf("diff -want +got:\n%v", e.Diff)
+}
+
+// SetCheckError stores a CheckError in the context for later retrieval
+func SetCheckError(ctx context.Context, err *CheckError) context.Context {
+	return context.WithValue(ctx, ctxCheckError, err)
+}
+
+// GetCheckError retrieves the CheckError from the context if present
+func GetCheckError(ctx context.Context) (*CheckError, bool) {
+	err, ok := ctx.Value(ctxCheckError).(*CheckError)
+	return err, ok
+}
+
 func StdCheck(L *lua.LState, tbl *lua.LTable, b any) {
 	if err := StdCheckError(L.Context(), tbl, b); err != nil {
+		// Store structured error in context before raising
+		if checkErr, ok := err.(*CheckError); ok {
+			L.SetContext(SetCheckError(L.Context(), checkErr))
+		}
 		L.RaiseError("%v", err.Error())
 	}
 }
@@ -46,7 +102,11 @@ func StdCheckError(ctx context.Context, tbl *lua.LTable, b any) error {
 
 	diff := cmp.Diff(a, b, opts...)
 	if diff != "" {
-		return fmt.Errorf("diff -want +got:\n%v", diff)
+		return &CheckError{
+			Diff:     diff,
+			Expected: a,
+			Actual:   b,
+		}
 	}
 
 	saveFunc := ctx.Value(ctxSaveFunc).(SaveFunc)

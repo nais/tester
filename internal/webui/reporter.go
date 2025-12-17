@@ -11,16 +11,35 @@ import (
 	"github.com/nais/tester/lua/reporter"
 )
 
+// RerunRequest represents a request to rerun a test file
+type RerunRequest struct {
+	Filename string
+}
+
+type TestInfo struct {
+	Type      reporter.InfoType  `json:"type"`
+	Title     string             `json:"title"`
+	Content   string             `json:"content"`
+	Args      []reporter.InfoArg `json:"args,omitempty"`
+	Timestamp time.Duration      `json:"timestamp"`
+	Order     int                `json:"order"`
+	Langauge  string             `json:"language,omitempty"`
+}
+
 type TestError struct {
-	Message string `json:"message"`
+	Message  string `json:"message"`
+	Expected any    `json:"expected,omitempty"`
+	Actual   any    `json:"actual,omitempty"`
 }
 
 type Test struct {
 	Filename string `json:"filename"`
 	Name     string `json:"name"`
 	Runner   string `json:"runner"`
+	Order    int    `json:"order"`
 	lock     sync.RWMutex
 	Errors   []*TestError  `json:"errors"`
+	Infos    []*TestInfo   `json:"infos"`
 	Duration time.Duration `json:"duration"`
 
 	start time.Time
@@ -32,6 +51,7 @@ func (t *Test) Start() {
 	defer t.lock.Unlock()
 
 	t.Errors = nil
+	t.Infos = nil
 	t.start = time.Now()
 
 	t.cache.Broadcast(&SSEMessage{
@@ -52,17 +72,18 @@ func (t *Test) End() {
 	})
 }
 
-func (t *Test) AddError(msg string, args ...any) {
+func (t *Test) AddError(err *reporter.Error) {
 	if t == nil {
-		fmt.Printf(msg, args...)
-		fmt.Println()
+		fmt.Println(err.Message)
 		return
 	}
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	t.Errors = append(t.Errors, &TestError{
-		Message: msg,
+		Message:  err.Message,
+		Expected: err.Expected,
+		Actual:   err.Actual,
 	})
 
 	t.cache.Broadcast(&SSEMessage{
@@ -71,14 +92,39 @@ func (t *Test) AddError(msg string, args ...any) {
 	})
 }
 
+func (t *Test) AddInfo(info reporter.Info) {
+	if t == nil {
+		fmt.Printf("[%s] %s: %s\n", info.Type, info.Title, info.Content)
+		return
+	}
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	t.Infos = append(t.Infos, &TestInfo{
+		Type:      info.Type,
+		Title:     info.Title,
+		Content:   info.Content,
+		Args:      info.Args,
+		Timestamp: time.Since(t.start),
+		Langauge:  info.Language,
+	})
+
+	t.cache.Broadcast(&SSEMessage{
+		Type: "info",
+		Data: t,
+	})
+}
+
 type File struct {
 	Name     string `json:"name"`
 	lock     sync.RWMutex
 	SubTests []*Test       `json:"subTests"`
+	Infos    []*TestInfo   `json:"infos"`
 	Duration time.Duration `json:"duration"`
 
-	start time.Time
-	cache *sseCache
+	start     time.Time
+	cache     *sseCache
+	itemOrder int
 }
 
 func (f *File) Start() {
@@ -86,7 +132,9 @@ func (f *File) Start() {
 	defer f.lock.Unlock()
 
 	f.SubTests = nil
+	f.Infos = nil
 	f.start = time.Now()
+	f.itemOrder = 0
 
 	f.cache.Broadcast(&SSEMessage{
 		Type: "start",
@@ -114,11 +162,38 @@ func (f *File) AddTest(name, runner string) *Test {
 		Filename: f.Name,
 		Name:     name,
 		Runner:   runner,
+		Order:    f.itemOrder,
 		cache:    f.cache,
 	}
+	f.itemOrder++
 
 	f.SubTests = append(f.SubTests, test)
 	return test
+}
+
+func (f *File) AddInfo(info reporter.Info) {
+	if f == nil {
+		fmt.Printf("[%s] %s: %s\n", info.Type, info.Title, info.Content)
+		return
+	}
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.Infos = append(f.Infos, &TestInfo{
+		Type:      info.Type,
+		Title:     info.Title,
+		Content:   info.Content,
+		Args:      info.Args,
+		Timestamp: time.Since(f.start),
+		Order:     f.itemOrder,
+		Langauge:  info.Language,
+	})
+	f.itemOrder++
+
+	f.cache.Broadcast(&SSEMessage{
+		Type: "file_info",
+		Data: f,
+	})
 }
 
 type SSEMessage struct {
@@ -135,6 +210,8 @@ type sseCache struct {
 	files map[string]*File
 
 	listeners []listener
+
+	rerunCh chan RerunRequest
 }
 
 func (c *sseCache) Broadcast(msg *SSEMessage) {
@@ -148,9 +225,9 @@ func (c *sseCache) Broadcast(msg *SSEMessage) {
 
 func (c *sseCache) RemoveFile(name string) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	delete(c.files, name)
+	c.lock.Unlock()
+
 	c.Broadcast(&SSEMessage{
 		Type: "remove",
 		Data: name,
@@ -209,8 +286,21 @@ func NewSSEReporter(dir string) *SSEReporter {
 	return &SSEReporter{
 		cache: &sseCache{
 			dirPrefix: dir,
+			rerunCh:   make(chan RerunRequest, 10),
 		},
 	}
+}
+
+// RerunChannel returns the channel for rerun requests
+func (r *SSEReporter) RerunChannel() <-chan RerunRequest {
+	return r.cache.rerunCh
+}
+
+// RequestRerun sends a rerun request for the given filename
+func (r *SSEReporter) RequestRerun(filename string) {
+	// Convert relative path back to absolute if needed
+	fullPath := filepath.Join(r.cache.dirPrefix, filename)
+	r.cache.rerunCh <- RerunRequest{Filename: fullPath}
 }
 
 func (r *SSEReporter) RunFile(ctx context.Context, filename string, fn func(reporter.Reporter)) {
@@ -227,8 +317,16 @@ func (r *SSEReporter) RunTest(ctx context.Context, runner, name string, fn func(
 	test.End()
 }
 
-func (r *SSEReporter) Error(msg string, args ...any) {
-	r.test.AddError(msg, args...)
+func (r *SSEReporter) ReportError(err *reporter.Error) {
+	r.test.AddError(err)
+}
+
+func (r *SSEReporter) Info(info reporter.Info) {
+	if r.test != nil {
+		r.test.AddInfo(info)
+	} else if r.file != nil {
+		r.file.AddInfo(info)
+	}
 }
 
 func (r *SSEReporter) RemoveFile(name string) {

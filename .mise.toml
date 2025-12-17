@@ -1,2 +1,42 @@
+[settings]
+pin = true
+
 [tools]
-go = "1.24.0"
+go = "1.25.5"
+node = "24.11.1"
+
+[tasks.generate]
+description = "Build the web UI and copy to static directory"
+run = """
+rm -rf ./internal/webui/static/*
+cd ./internal/webui/ui && npm i && npm run build && cd ../../..
+cp -r ./internal/webui/ui/dist/* ./internal/webui/static/
+"""
+
+[tasks.test]
+description = "Run Go tests with coverage and race detection"
+run = "go test -cover --race ./..."
+
+[tasks.staticcheck]
+description = "Run staticcheck linter"
+run = "go tool honnef.co/go/tools/cmd/staticcheck ./..."
+
+[tasks.vulncheck]
+description = "Run vulnerability checker"
+run = "go tool golang.org/x/vuln/cmd/govulncheck ./..."
+
+[tasks.deadcode]
+description = "Check for dead code"
+run = "go tool golang.org/x/tools/cmd/deadcode -test ./..."
+
+[tasks.check]
+description = "Run all code checks (staticcheck, vulncheck, deadcode)"
+depends = ["staticcheck", "vulncheck", "deadcode"]
+
+[tasks.fmt]
+description = "Format Go code with gofumpt"
+run = "go tool mvdan.cc/gofumpt -w ./"
+
+[tasks.build]
+description = "Build all Go packages"
+run = "go build ./..."

@@ -1,10 +1,12 @@
 package runner
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -116,6 +118,16 @@ func (s *SQL) check(L *lua.LState) int {
 // }
 
 func (s *SQL) query(L *lua.LState) int {
+	query := L.CheckString(1)
+
+	// Log the query
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeQuery,
+		Title:    "SQL Query",
+		Content:  query,
+		Language: "sql",
+	})
+
 	res := s.doQuery(L)
 
 	ret := make([]any, len(res))
@@ -125,11 +137,39 @@ func (s *SQL) query(L *lua.LState) int {
 
 	s.results = ret
 
+	// Log the result
+	resultJSON, _ := json.MarshalIndent(s.results, "", "\t")
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeResult,
+		Title:    fmt.Sprintf("SQL Result (%d rows)", len(res)),
+		Content:  string(resultJSON),
+		Language: "json",
+	})
+
 	return 0
 }
 
 func (s *SQL) queryRow(L *lua.LState) int {
+	query := L.CheckString(1)
+
+	// Log the query
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeQuery,
+		Title:    "SQL QueryRow",
+		Content:  query,
+		Language: "sql",
+	})
+
 	s.results = s.doQueryRow(L)
+
+	// Log the result
+	resultJSON, _ := json.MarshalIndent(s.results, "", "\t")
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeResult,
+		Title:    "SQL Result (1 row)",
+		Content:  string(resultJSON),
+		Language: "json",
+	})
 
 	return 0
 }

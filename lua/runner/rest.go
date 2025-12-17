@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -81,19 +82,34 @@ func (r *REST) send(L *lua.LState) int {
 	method := L.CheckString(1)
 	path := L.CheckString(2)
 	var body io.Reader
+	var bodyContent string
 	if L.GetTop() > 2 {
 		switch L.Get(3).(type) {
 		case lua.LString:
-			body = strings.NewReader(L.CheckString(3))
+			bodyContent = L.CheckString(3)
+			body = strings.NewReader(bodyContent)
 		case *lua.LTable:
 			tbl := L.CheckTable(3)
 			b, err := json.Marshal(tbl)
 			if err != nil {
 				L.RaiseError("unable to marshal table: %v", err)
 			}
+			bodyContent = string(b)
 			body = bytes.NewReader(b)
 		}
 	}
+
+	// Log the request
+	requestInfo := fmt.Sprintf("%s %s", method, path)
+	if bodyContent != "" {
+		requestInfo += "\n\n" + bodyContent
+	}
+	Info(ctx, reporter.Info{
+		Type:     reporter.InfoTypeRequest,
+		Title:    "HTTP Request",
+		Content:  requestInfo,
+		Language: "text",
+	})
 
 	req, err := http.NewRequestWithContext(ctx, method, path, body)
 	if err != nil {
@@ -102,6 +118,14 @@ func (r *REST) send(L *lua.LState) int {
 
 	r.response = httptest.NewRecorder()
 	r.server.ServeHTTP(r.response, req)
+
+	// Log the response
+	Info(ctx, reporter.Info{
+		Type:     reporter.InfoTypeResponse,
+		Title:    fmt.Sprintf("HTTP Response (%d)", r.response.Code),
+		Content:  r.response.Body.String(),
+		Language: "json",
+	})
 
 	return 0
 }

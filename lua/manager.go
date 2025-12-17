@@ -98,6 +98,10 @@ func (m *Manager) RunUI(ctx context.Context, dir string) error {
 	})
 
 	wg.Go(func() error {
+		return m.handleReruns(ctx, reporter)
+	})
+
+	wg.Go(func() error {
 		err := m.run(ctx, reporter)
 		if err != nil {
 			fmt.Println("RUN ERROR", err)
@@ -115,6 +119,20 @@ func (m *Manager) RunUI(ctx context.Context, dir string) error {
 	return wg.Wait()
 }
 
+func (m *Manager) handleReruns(ctx context.Context, sseReporter *webui.SSEReporter) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case req := <-sseReporter.RerunChannel():
+			sseReporter.RunFile(ctx, req.Filename, func(r reporter.Reporter) {
+				s := newSuite(m, r)
+				s.run(ctx, req.Filename)
+			})
+		}
+	}
+}
+
 func (m *Manager) watch(ctx context.Context, dir string, report reporter.Reporter) error {
 	watcher, err := newBatcher(ctx)
 	if err != nil {
@@ -128,7 +146,7 @@ func (m *Manager) watch(ctx context.Context, dir string, report reporter.Reporte
 
 	go func() {
 		for err := range watcher.Errors {
-			report.Error("watcher error: %v", err)
+			report.ReportError(reporter.NewError("watcher error: %v", err))
 		}
 	}()
 

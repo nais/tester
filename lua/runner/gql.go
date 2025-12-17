@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/nais/tester/lua/reporter"
 	"github.com/nais/tester/lua/spec"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -93,6 +94,14 @@ func (g *GQL) query(L *lua.LState) int {
 		panic(fmt.Sprintf("gql.Run: unable to marshal request: %v", err))
 	}
 
+	// Log the query
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeQuery,
+		Title:    "GraphQL Query",
+		Content:  query,
+		Language: "graphql",
+	})
+
 	req, err := http.NewRequestWithContext(L.Context(), "POST", "/", bytes.NewReader(b))
 	if err != nil {
 		panic(fmt.Sprintf("gql.Run: unable to create request: %v", err))
@@ -114,6 +123,15 @@ func (g *GQL) query(L *lua.LState) int {
 	if err := json.Unmarshal(rec.Body.Bytes(), &g.results); err != nil {
 		panic(fmt.Sprintf("gql.Run: unable to unmarshal response: %v", err))
 	}
+
+	// Log the response
+	responseJSON, _ := json.MarshalIndent(g.results, "", "\t")
+	Info(L.Context(), reporter.Info{
+		Type:     reporter.InfoTypeResponse,
+		Title:    "GraphQL Response",
+		Content:  string(responseJSON),
+		Language: "json",
+	})
 
 	return 0
 }
