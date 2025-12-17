@@ -11,6 +11,11 @@ import (
 	"github.com/nais/tester/lua/reporter"
 )
 
+// RerunRequest represents a request to rerun a test file
+type RerunRequest struct {
+	Filename string
+}
+
 type TestInfo struct {
 	Type      reporter.InfoType  `json:"type"`
 	Title     string             `json:"title"`
@@ -205,6 +210,8 @@ type sseCache struct {
 	files map[string]*File
 
 	listeners []listener
+
+	rerunCh chan RerunRequest
 }
 
 func (c *sseCache) Broadcast(msg *SSEMessage) {
@@ -279,8 +286,21 @@ func NewSSEReporter(dir string) *SSEReporter {
 	return &SSEReporter{
 		cache: &sseCache{
 			dirPrefix: dir,
+			rerunCh:   make(chan RerunRequest, 10),
 		},
 	}
+}
+
+// RerunChannel returns the channel for rerun requests
+func (r *SSEReporter) RerunChannel() <-chan RerunRequest {
+	return r.cache.rerunCh
+}
+
+// RequestRerun sends a rerun request for the given filename
+func (r *SSEReporter) RequestRerun(filename string) {
+	// Convert relative path back to absolute if needed
+	fullPath := filepath.Join(r.cache.dirPrefix, filename)
+	r.cache.rerunCh <- RerunRequest{Filename: fullPath}
 }
 
 func (r *SSEReporter) RunFile(ctx context.Context, filename string, fn func(reporter.Reporter)) {

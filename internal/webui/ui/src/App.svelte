@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CommandButton from "./lib/CommandButton.svelte";
+	import CommandPanel from "./lib/CommandPanel.svelte";
 	import FileButton from "./lib/FileButton.svelte";
 	import { formatNanoseconds } from "./lib/format";
 	import InfoCard from "./lib/InfoCard.svelte";
@@ -14,6 +16,7 @@
 
 	let fileFilter = $state("");
 	let testFilter = $state("");
+	let commandPanelOpen = $state(false);
 
 	// Load saved widths from localStorage
 	function loadWidths(): { filesWidth: number; testsWidth: number } {
@@ -115,9 +118,31 @@
 		const running = allTests.filter((t) => t.status === Status.RUNNING).length;
 		return { total: allTests.length, passed, failed, running };
 	});
+
+	// Keyboard shortcut handler
+	function handleKeydown(e: KeyboardEvent) {
+		// Check for Ctrl+K (Windows/Linux) or Cmd+K (Mac)
+		if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+			e.preventDefault();
+			commandPanelOpen = true;
+		}
+	}
 </script>
 
-<svelte:window onmousemove={handleMouseMove} onmouseup={handleMouseUp} />
+<svelte:window onmousemove={handleMouseMove} onmouseup={handleMouseUp} onkeydown={handleKeydown} />
+
+<CommandPanel
+	bind:isOpen={commandPanelOpen}
+	onClose={() => (commandPanelOpen = false)}
+	onSelectFile={(file) => {
+		active.file = file;
+		active.test = undefined;
+	}}
+	onSelectTest={(test, file) => {
+		active.file = file;
+		active.test = test;
+	}}
+/>
 
 <div id="wrapper" style:--files-width="{filesWidth}px" style:--tests-width="{testsWidth}px">
 	<aside class="panel">
@@ -135,6 +160,7 @@
 						active.test = undefined;
 					}}
 					active={active.file?.name === file.name}
+					showRerun
 				/>
 			{:else}
 				<p class="empty">No files found</p>
@@ -200,6 +226,9 @@
 			{:else if active.file}
 				<span class="test-name">{active.file.name}</span>
 			{/if}
+			<div style="margin-left: auto;">
+				<CommandButton onclick={() => (commandPanelOpen = true)} />
+			</div>
 		</header>
 		<div class="content">
 			{#if !active.file}

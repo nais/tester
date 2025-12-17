@@ -43,6 +43,17 @@ func Run(ctx context.Context, reporter *SSEReporter, opts ...Option) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", &noCache{handler: http.FileServerFS(o.root)})
+	mux.Handle("/rerun", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		filename := r.URL.Query().Get("file")
+		if filename == "" {
+			http.Error(w, "Missing file parameter", http.StatusBadRequest)
+			return
+		}
+
+		reporter.RequestRerun(filename)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+
 	mux.Handle("/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Handle Server sent events
 		w.Header().Set("Access-Control-Allow-Origin", "*")

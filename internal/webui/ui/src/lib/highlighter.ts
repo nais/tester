@@ -1,19 +1,28 @@
-import { createHighlighter, type Highlighter } from "shiki";
+import { createHighlighterCore, type HighlighterCore } from "shiki/core";
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
-let highlighter: Highlighter | null = null;
-let highlighterPromise: Promise<Highlighter> | null = null;
+let highlighter: HighlighterCore | null = null;
+let highlighterPromise: Promise<HighlighterCore> | null = null;
 
 const SUPPORTED_LANGUAGES = ["go", "lua", "diff", "graphql", "sql", "json"] as const;
 
-async function getHighlighter(): Promise<Highlighter> {
+async function getHighlighter(): Promise<HighlighterCore> {
 	if (highlighter) {
 		return highlighter;
 	}
 
 	if (!highlighterPromise) {
-		highlighterPromise = createHighlighter({
-			themes: ["github-dark"],
-			langs: [...SUPPORTED_LANGUAGES],
+		highlighterPromise = createHighlighterCore({
+			themes: [import("shiki/themes/github-dark.mjs")],
+			langs: [
+				import("shiki/langs/go.mjs"),
+				import("shiki/langs/lua.mjs"),
+				import("shiki/langs/diff.mjs"),
+				import("shiki/langs/graphql.mjs"),
+				import("shiki/langs/sql.mjs"),
+				import("shiki/langs/json.mjs"),
+			],
+			engine: createJavaScriptRegexEngine(),
 		}).then((h) => {
 			highlighter = h;
 			return h;

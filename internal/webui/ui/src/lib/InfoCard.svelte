@@ -29,36 +29,69 @@
 </script>
 
 <div class="info-card" style:--accent-color={colorMap[info.type] ?? "var(--color-text-muted)"}>
-	<button class="header" onclick={() => (expanded = !expanded)}>
+	<div class="header">
 		<span class="icon">{iconMap[info.type] ?? "ℹ️"}</span>
 		<span class="type-badge">{info.type}</span>
 		<span class="title">{info.title}</span>
 		<span class="timestamp">{formatNanoseconds(info.timestamp)}</span>
-		{#if isLongContent}
-			<span class="expand-icon">{expanded ? "▼" : "▶"}</span>
-		{/if}
-	</button>
-	<div class="content-wrapper" class:collapsed={isLongContent && !expanded}>
-		{#if hasArgs}
-			<table class="args-table">
-				<tbody>
-					{#each info.args as arg, i (i)}
-						<tr>
-							<td class="arg-key">{arg.name || `[${i}]`}</td>
-							<td class="arg-value">{arg.value}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		{/if}
-		{#if info.content}
-			{#if info.language}
-				<CodeView code={info.content} lang={info.language} />
-			{:else}
-				<pre class="content">{info.language}{info.content}</pre>
-			{/if}
-		{/if}
 	</div>
+	{#if isLongContent && !expanded}
+		<button class="collapsed-card" onclick={() => (expanded = true)}>
+			<div class="content-wrapper collapsed">
+				{#if hasArgs}
+					<table class="args-table">
+						<tbody>
+							{#each info.args as arg, i (i)}
+								<tr>
+									<td class="arg-key">{arg.name || `[${i}]`}</td>
+									<td class="arg-value">{arg.value}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+				{#if info.content}
+					{#if info.language}
+						<CodeView code={info.content} lang={info.language} />
+					{:else}
+						<pre class="content">{info.language}{info.content}</pre>
+					{/if}
+				{/if}
+			</div>
+			<div class="expand-hint">
+				<span>Click to expand</span>
+				<span class="expand-icon">▼</span>
+			</div>
+		</button>
+	{:else}
+		<div class="content-wrapper">
+			{#if hasArgs}
+				<table class="args-table">
+					<tbody>
+						{#each info.args as arg, i (i)}
+							<tr>
+								<td class="arg-key">{arg.name || `[${i}]`}</td>
+								<td class="arg-value">{arg.value}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+			{#if info.content}
+				{#if info.language}
+					<CodeView code={info.content} lang={info.language} />
+				{:else}
+					<pre class="content">{info.language}{info.content}</pre>
+				{/if}
+			{/if}
+		</div>
+		{#if isLongContent}
+			<button class="collapse-button" onclick={() => (expanded = false)}>
+				<span>Collapse</span>
+				<span class="collapse-icon">▲</span>
+			</button>
+		{/if}
+	{/if}
 </div>
 
 <style>
@@ -76,17 +109,9 @@
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem;
 		background: transparent;
-		border: none;
 		border-bottom: 1px solid var(--color-border);
-		width: 100%;
-		text-align: left;
-		cursor: pointer;
 		color: var(--color-text);
 		font-size: 0.875rem;
-	}
-
-	.header:hover {
-		background: var(--color-bg-active);
 	}
 
 	.icon {
@@ -117,22 +142,79 @@
 		flex-shrink: 0;
 	}
 
-	.expand-icon {
+	.collapsed-card {
+		width: 100%;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		text-align: left;
+		color: var(--color-text);
+		transition: background-color 0.15s ease;
+	}
+
+	.collapsed-card:hover {
+		background: var(--color-bg-hover);
+	}
+
+	.collapsed-card:hover .expand-hint {
+		background: var(--color-bg-active);
+	}
+
+	.expand-hint {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: var(--color-bg);
+		border-top: 1px solid var(--color-border);
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
+		transition: background-color 0.15s ease;
+	}
+
+	.expand-icon {
+		font-size: 0.625rem;
+	}
+
+	.collapse-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem;
+		background: var(--color-bg);
+		border: none;
+		border-top: 1px solid var(--color-border);
+		cursor: pointer;
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		transition: background-color 0.15s ease;
+	}
+
+	.collapse-button:hover {
+		background: var(--color-bg-active);
+		color: var(--color-text);
+	}
+
+	.collapse-icon {
+		font-size: 0.625rem;
 	}
 
 	.content-wrapper {
 		background: var(--color-bg);
 	}
 
-	.content-wrapper.collapsed {
+	.collapsed-card .content-wrapper.collapsed {
 		max-height: 100px;
 		overflow: hidden;
 		position: relative;
+		pointer-events: none;
 	}
 
-	.content-wrapper.collapsed::after {
+	.collapsed-card .content-wrapper.collapsed::after {
 		content: "";
 		position: absolute;
 		bottom: 0;
