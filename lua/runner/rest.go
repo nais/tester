@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,9 +18,13 @@ import (
 type REST struct {
 	server   http.Handler
 	response *httptest.ResponseRecorder
+	headers  http.Header
 }
 
-var _ spec.Runner = (*REST)(nil)
+var (
+	_ spec.Runner          = (*REST)(nil)
+	_ spec.RunnerAfterTest = (*REST)(nil)
+)
 
 func NewRestRunner(server http.Handler) *REST {
 	return &REST{server: server}
@@ -52,6 +57,15 @@ func (s *REST) Functions() []*spec.Function {
 			},
 			Doc:  "Send http request",
 			Func: s.send,
+		},
+		{
+			Name: "addHeader",
+			Args: []spec.Argument{
+				{Name: "key", Type: []spec.ArgumentType{spec.ArgumentTypeString}, Doc: "The header key"},
+				{Name: "value", Type: []spec.ArgumentType{spec.ArgumentTypeString}, Doc: "The header value"},
+			},
+			Doc:  "Add a header to the request",
+			Func: s.addHeader,
 		},
 		{
 			Name: "check",
@@ -116,6 +130,10 @@ func (r *REST) send(L *lua.LState) int {
 		panic(fmt.Errorf("rest.Run: unable to create request: %w", err))
 	}
 
+	for k := range r.headers {
+		req.Header.Add(k, r.headers.Get(k))
+	}
+
 	r.response = httptest.NewRecorder()
 	r.server.ServeHTTP(r.response, req)
 
@@ -128,6 +146,22 @@ func (r *REST) send(L *lua.LState) int {
 	})
 
 	return 0
+}
+
+func (r *REST) addHeader(L *lua.LState) int {
+	key := L.CheckString(1)
+	value := L.CheckString(2)
+
+	if r.headers == nil {
+		r.headers = http.Header{}
+	}
+
+	r.headers.Add(key, value)
+	return 0
+}
+
+func (r *REST) AfterTest(ctx context.Context) {
+	r.headers = nil
 }
 
 func (r *REST) check(L *lua.LState) int {
