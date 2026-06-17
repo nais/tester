@@ -1,6 +1,6 @@
 module github.com/nais/tester/example
 
-go 1.24.0
+go 1.25.0
 
 tool (
 	github.com/99designs/gqlgen
@@ -9,7 +9,7 @@ tool (
 
 require (
 	github.com/99designs/gqlgen v0.17.84
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/nais/tester v0.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/testcontainers/testcontainers-go v0.40.0
