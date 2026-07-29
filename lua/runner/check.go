@@ -124,7 +124,7 @@ func appendStore(key, path string, body any, fn SaveFunc) {
 
 	var (
 		root = body.(map[string]any)
-		val  interface{}
+		val  any
 	)
 
 	pathParts := strings.Split(path, ".")
@@ -138,14 +138,14 @@ func appendStore(key, path string, body any, fn SaveFunc) {
 			// check if next value is a list
 			intVal, err := strconv.Atoi(pathParts[i+1])
 			if err == nil {
-				slice := root[pathParts[i]].([]interface{})
-				root = slice[intVal].(map[string]interface{})
+				slice := root[pathParts[i]].([]any)
+				root = slice[intVal].(map[string]any)
 				// skip one iteration on lists
 				i += 1
 				continue
 			}
 		}
-		mp, ok := root[pathParts[i]].(map[string]interface{})
+		mp, ok := root[pathParts[i]].(map[string]any)
 		if ok {
 			root = mp
 		}
@@ -293,16 +293,16 @@ func cmpNotNull(a, b any) bool {
 
 func ignorePath(path string) func(p cmp.Path) bool {
 	return func(p cmp.Path) bool {
-		s := ""
+		var s strings.Builder
 		for _, pe := range p {
 			switch pe := pe.(type) {
 			case cmp.MapIndex:
-				s += "." + pe.Key().String()
+				s.WriteString("." + pe.Key().String())
 			case cmp.SliceIndex:
-				s += "." + strconv.Itoa(pe.Key())
+				s.WriteString("." + strconv.Itoa(pe.Key()))
 			}
 		}
-		return s == path
+		return s.String() == path
 	}
 }
 

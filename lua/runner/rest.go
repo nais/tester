@@ -178,7 +178,7 @@ func (r *REST) check(L *lua.LState) int {
 		return 0
 	}
 
-	var res map[string]interface{}
+	var res map[string]any
 	if err := json.Unmarshal(r.response.Body.Bytes(), &res); err != nil {
 		L.RaiseError("unable to unmarshal response: %v", err)
 		return 0

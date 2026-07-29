@@ -241,7 +241,7 @@ func writeConfig(sb *strings.Builder, cfg any) {
 	}
 
 	t := reflect.TypeOf(cfg)
-	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
+	if t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
 		panic("config must be a pointer to a struct")
 	}
 
@@ -252,7 +252,7 @@ func writeConfig(sb *strings.Builder, cfg any) {
 
 	sb.WriteString("--- Configuration\n")
 	sb.WriteString("---@class Config\n")
-	for i := 0; i < fields; i++ {
+	for i := range fields {
 		field := t.Elem().Field(i)
 		sb.WriteString("---@field " + field.Name + " ")
 		switch field.Type.Kind() {
@@ -270,7 +270,7 @@ func writeConfig(sb *strings.Builder, cfg any) {
 	sb.WriteString("Config = {\n")
 
 	v := reflect.ValueOf(cfg).Elem()
-	for i := 0; i < fields; i++ {
+	for i := range fields {
 		field := t.Elem().Field(i)
 		sb.WriteString("  " + field.Name + " = ")
 		switch field.Type.Kind() {

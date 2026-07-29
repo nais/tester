@@ -35,7 +35,7 @@ func New(newConfigFn func() any, setup SetupFunc, runners ...spec.Runner) (*Mana
 		ret := newConfigFn()
 		if ret != nil {
 			t := reflect.TypeOf(ret)
-			if t.Kind() != reflect.Ptr {
+			if t.Kind() != reflect.Pointer {
 				return nil, fmt.Errorf("newConfigFn must return a *pointer* to a struct")
 			}
 			if t.Elem().Kind() != reflect.Struct {
