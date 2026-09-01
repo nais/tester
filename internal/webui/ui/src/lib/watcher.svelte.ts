@@ -1,10 +1,10 @@
 import type { SupportedLanguages } from "./highlighter";
 
 export enum Status {
-	"RUNNING",
-	"DONE",
-	"ERROR",
-	"SKIP",
+	RUNNING,
+	DONE,
+	ERROR,
+	SKIP,
 }
 
 export type InfoType = "helper" | "request" | "response" | "query" | "result";
@@ -132,13 +132,7 @@ type FileInfoEvent = {
 };
 
 type Event =
-	| InitEvent
-	| StartEvent
-	| StartTestEvent
-	| EndTestEvent
-	| EndEvent
-	| InfoEvent
-	| FileInfoEvent;
+	InitEvent | StartEvent | StartTestEvent | EndTestEvent | EndEvent | InfoEvent | FileInfoEvent;
 
 function createSubTest(subTest: EventSubTest): SubTest {
 	const newSubTest = new SubTest(subTest.name, subTest.order ?? 0);

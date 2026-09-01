@@ -4,7 +4,7 @@ import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 let highlighter: HighlighterCore | null = null;
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 
-const SUPPORTED_LANGUAGES = ["go", "lua", "diff", "graphql", "sql", "json"] as const;
+type SUPPORTED_LANGUAGES = "go" | "lua" | "diff" | "graphql" | "sql" | "json";
 
 async function getHighlighter(): Promise<HighlighterCore> {
 	if (highlighter) {
@@ -32,7 +32,7 @@ async function getHighlighter(): Promise<HighlighterCore> {
 	return highlighterPromise;
 }
 
-export type SupportedLanguages = (typeof SUPPORTED_LANGUAGES)[number];
+export type SupportedLanguages = SUPPORTED_LANGUAGES[number];
 
 export async function highlightCode(code: string, lang: SupportedLanguages): Promise<string> {
 	const h = await getHighlighter();

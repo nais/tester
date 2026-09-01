@@ -3,7 +3,8 @@ pin = true
 
 [tools]
 go = "1.26.7"
-node = "24.11.1"
+node = "24.20.0"
+pnpm = "11.25.0"
 
 [tasks.generate]
 description = "Build the web UI and copy to static directory"
