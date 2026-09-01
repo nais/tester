@@ -10,7 +10,7 @@ pnpm = "11.25.0"
 description = "Build the web UI and copy to static directory"
 run = """
 rm -rf ./internal/webui/static/*
-cd ./internal/webui/ui && npm i && npm run build && cd ../../..
+cd ./internal/webui/ui && pnpm i && pnpm run build && cd ../../..
 cp -r ./internal/webui/ui/dist/* ./internal/webui/static/
 """
 
