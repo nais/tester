@@ -3,6 +3,9 @@ package runner
 import (
 	"context"
 	"fmt"
+	"math"
+	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -100,6 +103,7 @@ func StdCheckError(ctx context.Context, tbl *lua.LTable, b any) error {
 	toSave := make(map[string]string)
 	a, opts := convertToCheck("", tbl, toSave, nil)
 
+	opts = append(opts, numericEquality())
 	diff := cmp.Diff(a, b, opts...)
 	if diff != "" {
 		return &CheckError{
@@ -308,6 +312,59 @@ func ignorePath(path string) func(p cmp.Path) bool {
 
 func emptyContainer(path string) cmp.Option {
 	return cmp.FilterPath(ignorePath(path), cmp.Comparer(cmpEmptyContainer))
+}
+
+// numericEquality allows Lua numbers, which are always float64, to match Go
+// integer values without changing comparisons for non-numeric values.
+func numericEquality() cmp.Option {
+	return cmp.FilterValues(func(a, b any) bool {
+		return isNumber(a) && isNumber(b)
+	}, cmp.Comparer(numbersEqual))
+}
+
+func isNumber(v any) bool {
+	if v == nil {
+		return false
+	}
+
+	switch reflect.ValueOf(v).Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return true
+	default:
+		return false
+	}
+}
+
+func numbersEqual(a, b any) bool {
+	aRat, ok := numberAsRat(a)
+	if !ok {
+		return false
+	}
+	bRat, ok := numberAsRat(b)
+	if !ok {
+		return false
+	}
+	return aRat.Cmp(bRat) == 0
+}
+
+func numberAsRat(v any) (*big.Rat, bool) {
+	number := reflect.ValueOf(v)
+	r := new(big.Rat)
+
+	switch number.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return r.SetInt64(number.Int()), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return r.SetUint64(number.Uint()), true
+	default:
+		f := number.Float()
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			return nil, false
+		}
+		return r.SetFloat64(f), true
+	}
 }
 
 func cmpEmptyContainer(a, b any) bool {
