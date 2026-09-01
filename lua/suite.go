@@ -12,11 +12,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// testReporter is a wrapper that holds the current test's reporter
-type testReporter struct {
-	reporter reporter.Reporter
-}
-
 type suite struct {
 	// setupDone should be set to true after the setup function has been called. This should
 	// be done when the first test is run or first helper is invoked.
